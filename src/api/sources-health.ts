@@ -67,6 +67,7 @@ export async function sourceHealth(): Promise<{ sources: SourceHealth[]; usage: 
   }
 
   sources.push(await careerHealth());
+  sources.push(await directoryHealth());
 
   const { rows } = await pool.query<{ pages: string | null; linkedin: string; last: Date | null }>(
     `SELECT (SELECT sum(fetched) FROM crawl_runs WHERE started_at >= date_trunc('day', now() AT TIME ZONE 'Asia/Ho_Chi_Minh') AT TIME ZONE 'Asia/Ho_Chi_Minh') AS pages,
@@ -74,9 +75,17 @@ export async function sourceHealth(): Promise<{ sources: SourceHealth[]; usage: 
             (SELECT max(last_run_at) FROM crawl_queue) AS last`,
   );
   const u = rows[0];
+  const cov = await pool.query<{ posting: string; tracked: string }>(
+    `SELECT count(DISTINCT c.id) AS posting, count(DISTINCT c.id) FILTER (WHERE c.career_status = 'found') AS tracked
+       FROM job_sources s JOIN jobs j ON j.id = s.job_id JOIN companies c ON c.id = j.company_id
+      WHERE s.source <> 'career' AND s.first_seen_at > now() - interval '30 days'`,
+  );
   return {
     sources,
-    usage: { pagesToday: Number(u.pages ?? 0), linkedinToday: Number(u.linkedin), linkedinLimit: LINKEDIN_DAILY_LIMIT, lastChecked: u.last?.toISOString() ?? null },
+    usage: {
+      pagesToday: Number(u.pages ?? 0), linkedinToday: Number(u.linkedin), linkedinLimit: LINKEDIN_DAILY_LIMIT, lastChecked: u.last?.toISOString() ?? null,
+      coverage: { posting: Number(cov.rows[0].posting), tracked: Number(cov.rows[0].tracked) },
+    },
   };
 }
 
@@ -111,6 +120,25 @@ async function careerHealth(): Promise<SourceHealth> {
   };
 }
 
+// The TopDev company directory: how far the weekly read got.
+async function directoryHealth(): Promise<SourceHealth> {
+  const { rows } = await pool.query<{ companies: string; last_run: Date | null; errors: string; last_error: string | null }>(
+    `SELECT (SELECT count(*) FROM companies WHERE discovered_via = 'directory') AS companies,
+            (SELECT max(last_run_at) FROM crawl_queue WHERE kind = 'directory-topdev') AS last_run,
+            (SELECT count(*) FROM crawl_queue WHERE kind = 'directory-topdev' AND last_error IS NOT NULL AND (done_at IS NULL OR last_run_at > now() - interval '1 day')) AS errors,
+            (SELECT last_error FROM crawl_queue WHERE kind = 'directory-topdev' AND last_error IS NOT NULL ORDER BY last_run_at DESC NULLS LAST LIMIT 1) AS last_error`,
+  );
+  const r = rows[0];
+  const errors = Number(r.errors);
+  return {
+    id: "directory", name: "TopDev company directory", kind: "Company directory",
+    note: `${Number(r.companies).toLocaleString("en-US")} companies in Ho Chi Minh City, re-read weekly`,
+    status: errors ? "Degraded" : "Healthy", lastRun: r.last_run?.toISOString() ?? null, seen24h: Number(r.companies), errors,
+    error: errors && r.last_error ? explain("TopDev", r.last_error, null).error : null,
+    errorDetail: errors ? "Retrying with a longer wait." : null, pausedUntil: null,
+  };
+}
+
 export type TryResult = { ok: boolean; pausedUntil: string | null; message: string };
 
 // "Try now" / "Check now": runs one of the source's searches immediately, outside the queue order.
@@ -118,7 +146,7 @@ export type TryResult = { ok: boolean; pausedUntil: string | null; message: stri
 // the pause doubles as it would for the crawler.
 export async function tryNow(sourceId: string): Promise<TryResult> {
   const s = SOURCES.find((x) => x.id === sourceId);
-  if (!s) return { ok: false, pausedUntil: null, message: "Career pages are checked one site at a time; nothing to run at once." };
+  if (!s) return { ok: false, pausedUntil: null, message: "This source is read one site or page at a time; nothing to run at once." };
   const kind = `${s.id}-search`;
   const { rows } = await pool.query<Task>(
     `UPDATE crawl_queue SET locked_at = now(), attempts = attempts + 1

@@ -47,24 +47,28 @@ type Client = pg.Pool | pg.PoolClient;
 
 // Records the company (once) and its website when the new source is better than the stored one.
 // Returns the company id. A newly learned website queues a search for the career page.
+// `discoveredVia` is "posting" for companies seen in a posting and "directory" for the TopDev directory;
+// directory companies are looked at after the ones that actually posted.
 export async function ensureCompany(
   name: string,
   website: { url: string | null; source: string } | null,
   client: Client = pool,
+  discoveredVia: "posting" | "directory" = "posting",
 ): Promise<number> {
   const key = normalizeKey(name);
   const { rows } = await client.query<{ id: string; website: string | null; website_source: string | null }>(
-    `INSERT INTO companies (name, key, discovered_via) VALUES ($1, $2, 'posting')
-     ON CONFLICT (key) DO UPDATE SET name = companies.name
+    `INSERT INTO companies (name, key, discovered_via) VALUES ($1, $2, $3)
+     ON CONFLICT (key) DO UPDATE SET name = companies.name,
+       discovered_via = CASE WHEN $3 = 'posting' THEN 'posting' ELSE companies.discovered_via END
      RETURNING id, website, website_source`,
-    [name, key],
+    [name, key, discoveredVia],
   );
   const c = rows[0];
   const id = Number(c.id);
   const url = website?.url ? siteRoot(website.url) : null;
   if (url && website && (SOURCE_RANK[website.source] ?? 0) > (SOURCE_RANK[c.website_source ?? ""] ?? 0) && url !== c.website) {
     await client.query("UPDATE companies SET website = $2, website_source = $3, career_status = 'unknown' WHERE id = $1", [id, url, website.source]);
-    await enqueue("career-discover", url, { priority: 60, payload: { companyId: id } });
+    await enqueue("career-discover", url, { priority: discoveredVia === "posting" ? 60 : 90, payload: { companyId: id } });
   }
   return id;
 }

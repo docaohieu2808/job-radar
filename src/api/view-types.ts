@@ -16,7 +16,14 @@ export type SourceHealth = {
   pausedUntil: string | null;
 };
 
-export type Usage = { pagesToday: number; linkedinToday: number; linkedinLimit: number; lastChecked: string | null };
+export type Usage = {
+  pagesToday: number;
+  linkedinToday: number;
+  linkedinLimit: number;
+  lastChecked: string | null;
+  // Companies with a job-board posting in the last 30 days, and how many of them have a tracked career page.
+  coverage: { posting: number; tracked: number };
+};
 
 export type PostingView = {
   id: number;

@@ -18,6 +18,10 @@ export function SourcesScreen({ app }: { app: App }) {
   const usage = [
     { label: "Pages checked today", n: u.pagesToday.toLocaleString("en-US"), of: null as string | null, w: 0, note: u.lastChecked ? `Last checked ${clock(u.lastChecked)}` : "" },
     { label: "LinkedIn postings read today", n: String(u.linkedinToday), of: String(u.linkedinLimit), w: (u.linkedinToday / u.linkedinLimit) * 100, note: "Kept low so LinkedIn does not block the crawler · resets at 07:00" },
+    {
+      label: "Career page coverage", n: u.coverage.posting ? `${Math.round((u.coverage.tracked / u.coverage.posting) * 100)}%` : "0%", of: null, w: 0,
+      note: `${u.coverage.tracked} of ${u.coverage.posting} companies that posted on a job board in the last 30 days have a tracked career page`,
+    },
   ];
   const check = async (id: string, name: string) => {
     setChecking(id);
@@ -37,7 +41,7 @@ export function SourcesScreen({ app }: { app: App }) {
         <h1 style={css("margin:0;font-size:24px;font-weight:600;letter-spacing:-0.01em")}>Sources</h1>
         <p style={css("margin:4px 0 0;font-size:13px;color:var(--ink3)")}>Where postings come from and whether each check is working.</p>
       </div>
-      <div className="usage-grid" style={css("display:grid;grid-template-columns:1fr 1fr;border-top:1px solid var(--line);border-bottom:1px solid var(--line)")}>
+      <div className="usage-grid" style={css("display:grid;grid-template-columns:1fr 1fr 1fr;border-top:1px solid var(--line);border-bottom:1px solid var(--line)")}>
         {usage.map((x) => (
           <div key={x.label} style={css("padding:20px 24px;border-right:1px solid var(--line)")}>
             <div style={css("font-size:13px;font-weight:500;color:var(--ink2)")}>{x.label}</div>
@@ -81,7 +85,7 @@ export function SourcesScreen({ app }: { app: App }) {
                   <div style={css("font-size:14px;color:var(--ink)")}>{s.error}</div>
                   <div style={css("margin-top:2px;font-size:13px;color:var(--ink3)")}>{s.errorDetail}</div>
                 </div>
-                {s.id !== "career" && <button onClick={() => void check(s.id, s.name)} disabled={checking === s.id} className="hv-ctl press"
+                {!["career", "directory"].includes(s.id) && <button onClick={() => void check(s.id, s.name)} disabled={checking === s.id} className="hv-ctl press"
                   style={css("height:32px;min-width:104px;padding:0 12px;border-radius:10px;border:1px solid var(--line2);background:var(--sheet);font-size:13px;font-weight:500;display:flex;align-items:center;justify-content:center;gap:8px;cursor:pointer")}>
                   {checking === s.id && <span style={css("width:12px;height:12px;border-radius:9999px;border:2px solid currentColor;border-right-color:transparent;box-sizing:border-box;animation:jr-spin 700ms linear infinite")} />}
                   {checking === s.id ? "Checking" : s.status === "Blocked" ? "Try now" : "Check now"}
