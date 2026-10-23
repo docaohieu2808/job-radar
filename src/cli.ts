@@ -12,20 +12,23 @@ try {
   else if (command === "normalize-career-pages") {
     // Merges career pages stored under two spellings of one address (www, trailing slash) into one.
     const { rows } = await pool.query<{ id: string; url: string }>("SELECT id, url FROM career_pages ORDER BY id");
-    const seen = new Map<string, string>();
-    let merged = 0;
+    const groups = new Map<string, { id: string; url: string }[]>();
     for (const r of rows) {
       const url = normalizeUrl(r.url);
-      if (seen.has(url)) {
+      groups.set(url, [...(groups.get(url) ?? []), r]);
+    }
+    let merged = 0;
+    for (const [url, group] of groups) {
+      // Keep the row already stored under the normalized address, else the oldest.
+      const keep = group.find((r) => r.url === url) ?? group[0];
+      for (const r of group.filter((x) => x !== keep)) {
         await pool.query("DELETE FROM crawl_queue WHERE kind = 'career-page' AND (payload->>'careerPageId')::bigint = $1", [r.id]);
         await pool.query("DELETE FROM career_pages WHERE id = $1", [r.id]);
         merged++;
-        continue;
       }
-      seen.set(url, r.id);
-      if (url !== r.url) {
-        await pool.query("UPDATE career_pages SET url = $2 WHERE id = $1", [r.id, url]);
-        await pool.query("UPDATE crawl_queue SET url = $2, host = $3 WHERE kind = 'career-page' AND (payload->>'careerPageId')::bigint = $1", [r.id, url, new URL(url).host]);
+      if (keep.url !== url) {
+        await pool.query("UPDATE career_pages SET url = $2 WHERE id = $1", [keep.id, url]);
+        await pool.query("UPDATE crawl_queue SET url = $2, host = $3 WHERE kind = 'career-page' AND (payload->>'careerPageId')::bigint = $1", [keep.id, url, new URL(url).host]);
       }
     }
     console.log(`merged ${merged} of ${rows.length} career pages`);
