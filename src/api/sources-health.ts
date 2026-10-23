@@ -91,10 +91,11 @@ export async function sourceHealth(): Promise<{ sources: SourceHealth[]; usage: 
 
 // Company career pages as one row: how many companies have a known page, and what is wrong with the rest.
 async function careerHealth(): Promise<SourceHealth> {
-  const { rows } = await pool.query<{ found: string; none: string; browser: string; pending: string; companies: string; errors: string; last_error: string | null; last_run: Date | null; seen: string }>(
+  const { rows } = await pool.query<{ found: string; none: string; browser: string; unreachable: string; pending: string; companies: string; errors: string; last_error: string | null; last_run: Date | null; seen: string }>(
     `SELECT count(*) FILTER (WHERE career_status = 'found') AS found,
             count(*) FILTER (WHERE career_status = 'none') AS none,
             count(*) FILTER (WHERE career_status = 'needs_browser') AS browser,
+            count(*) FILTER (WHERE career_status = 'error') + (SELECT count(*) FROM career_pages WHERE status = 'error') AS unreachable,
             count(*) FILTER (WHERE career_status = 'unknown' AND website IS NOT NULL) AS pending,
             count(*) AS companies,
             (SELECT count(*) FROM crawl_queue WHERE kind LIKE 'career-%' AND last_error IS NOT NULL AND (done_at IS NULL OR last_run_at > now() - interval '1 day')) AS errors,
@@ -109,7 +110,7 @@ async function careerHealth(): Promise<SourceHealth> {
     id: "career",
     name: "Career pages",
     kind: "Company career page",
-    note: `${r.found} found · ${r.pending} being looked for · ${r.none} without one · ${r.browser} need a browser · ${r.companies} companies known`,
+    note: `${r.found} found · ${r.pending} being looked for · ${r.none} without one · ${r.browser} need a browser · ${r.unreachable} unreachable · ${r.companies} companies known`,
     status: errors > 0 ? "Degraded" : "Healthy",
     lastRun: r.last_run?.toISOString() ?? null,
     seen24h: Number(r.seen),
