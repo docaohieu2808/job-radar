@@ -20,7 +20,7 @@ const REJECT_AT = 25;
 
 // Platforms, social networks, job boards, news, government and shared services: never a company to track.
 const NOT_A_CANDIDATE =
-  /^(facebook|fb|twitter|x|linkedin|instagram|youtube|youtu|tiktok|zalo|pinterest|reddit|discord|telegram|t|wa|whatsapp|messenger|google|goo|gstatic|googleapis|googletagmanager|doubleclick|apple|microsoft|live|office|bing|amazon|amazonaws|cloudflare|cloudfront|jsdelivr|unpkg|wordpress|wp|gravatar|github|gitlab|bitbucket|medium|blogspot|bit|tinyurl|shopee|lazada|tiki|sendo|itviec|topcv|topdev|vietnamworks|careerviet|careerlink|glints|indeed|vieclam24h|vnexpress|tuoitre|thanhnien|cafef|cafebiz|dantri|zingnews|genk|w3|schema|creativecommons|mozilla|adobe|hubspot|mailchimp|typeform|calendly|zoom|slack|notion|figma|canva|wix|squarespace|shopify|myshopify|dmca|trustpilot|apps|play|itunes|onelink|firebaseapp|vercel|netlify|herokuapp|hotjar|clarity|intercom|zendesk|freshdesk|tawk|crisp|recaptcha|cookielaw|onetrust|cookiebot)\./i;
+  /^(facebook|fb|twitter|x|linkedin|instagram|youtube|youtu|tiktok|zalo|pinterest|reddit|discord|telegram|t|wa|whatsapp|messenger|google|goo|gstatic|googleapis|googletagmanager|doubleclick|apple|microsoft|live|office|bing|amazon|amazonaws|cloudflare|cloudfront|jsdelivr|unpkg|wordpress|wp|gravatar|github|gitlab|bitbucket|medium|blogspot|bit|tinyurl|shopee|lazada|tiki|sendo|itviec|topcv|topdev|vietnamworks|careerviet|careerlink|glints|indeed|vieclam24h|vnexpress|tuoitre|thanhnien|cafef|cafebiz|dantri|zingnews|genk|w3|schema|creativecommons|mozilla|adobe|hubspot|mailchimp|typeform|calendly|zoom|slack|notion|figma|canva|wix|squarespace|shopify|myshopify|dmca|trustpilot|apps|play|itunes|onelink|firebaseapp|vercel|netlify|herokuapp|hotjar|clarity|intercom|zendesk|freshdesk|tawk|crisp|recaptcha|cookielaw|onetrust|cookiebot|lnkd|sharepoint|onedrive|dropbox|box|atlassian|trello|airtable|ashbyhq|greenhouse|lever|workable|smartrecruiters|myworkdayjobs|breezy|recruitee|bamboohr|teamtailor|personio|charmhub|snapcraft|npmjs|pypi|docker|readthedocs|stackoverflow|wikipedia|wikimedia|archive|issuu|scribd|slideshare|behance|dribbble|vimeo|soundcloud|spotify|zingmp3|grab|momo|vnpay|zalopay)\./i;
 const PUBLIC_SECTOR = /\.(gov|edu|ac|org)\.vn$|\.gov$|\.edu$|\.mil$/i;
 
 export function candidateDomain(url: string, pageUrl: string): string | null {
@@ -138,7 +138,7 @@ export function siteName(html: string, domain: string): string {
   return domain.split(".")[0].replace(/^\w/, (c) => c.toUpperCase());
 }
 
-type LlmVerdict = { it_company: boolean; vietnam_or_remote: boolean; name: string };
+type LlmVerdict = { it_company: boolean; hires_engineers: boolean; vietnam_or_remote: boolean; name: string };
 
 async function checkCandidate(domain: string): Promise<"done" | "later"> {
   const url = `https://${domain}`;
@@ -147,6 +147,11 @@ async function checkCandidate(domain: string): Promise<"done" | "later"> {
       "UPDATE domain_candidates SET status = $2, score = $3, decided_by = $4, reason = $5, company_id = $6, checked_at = now() WHERE domain = $1",
       [domain, status, score, by, reason, companyId],
     );
+  // Candidates queued before a platform joined the block list are dropped without a visit.
+  if (NOT_A_CANDIDATE.test(domain) || PUBLIC_SECTOR.test(domain)) {
+    await decide("rejected", null, "rules", "platform or public sector");
+    return "done";
+  }
   if (!(await robotsAllow(url))) {
     await decide("rejected", null, "rules", "robots.txt disallows the home page");
     return "done";
@@ -165,15 +170,18 @@ async function checkCandidate(domain: string): Promise<"done" | "later"> {
   let name = s.name;
   if (s.score > REJECT_AT && s.score < ACCEPT_AT) {
     const v = await askJson<LlmVerdict>(
-      "You classify a website from its home page text. Answer JSON " +
-        '{"it_company":boolean,"vietnam_or_remote":boolean,"name":string}: it_company = a company whose business is software, IT ' +
-        "services or a tech product (not a shop, school, news site or agency directory); vietnam_or_remote = it has an office in " +
-        "Vietnam or hires remote engineers; name = the company's name.",
+      "You classify a website from its home page text, strictly. Answer JSON " +
+        '{"it_company":boolean,"hires_engineers":boolean,"vietnam_or_remote":boolean,"name":string}. ' +
+        "it_company: the company's main business is software, IT services, cloud or infrastructure, or a technology product it builds. " +
+        "Marketing, SEO, advertising and media agencies, web-design shops for small businesses, clinics, retailers, schools, news sites, " +
+        "and a page that is itself a SaaS tool or platform (not a company's own site) are NOT it_company. " +
+        "hires_engineers: it plausibly employs software, DevOps or infrastructure engineers. " +
+        "vietnam_or_remote: it has an office in Vietnam or hires engineers remotely. name: the company's name. When unsure, answer false.",
       `Domain: ${domain}\n\n${mainText(html).slice(0, 4000)}`,
       "discovery",
     );
     if (v) {
-      accept = v.it_company && v.vietnam_or_remote;
+      accept = v.it_company && v.hires_engineers && v.vietnam_or_remote;
       by = "llm";
       if (v.name?.trim()) name = v.name.trim().slice(0, 80);
     } else {

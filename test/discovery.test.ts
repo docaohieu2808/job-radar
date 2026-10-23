@@ -15,6 +15,9 @@ describe("link discovery", () => {
     expect(candidateDomain("https://hcmus.edu.vn", "https://acme.vn")).toBeNull();
     expect(candidateDomain("https://blog.acme.vn/post", "https://acme.vn")).toBeNull();
     expect(candidateDomain("mailto:hr@acme.vn", "https://acme.vn")).toBeNull();
+    expect(candidateDomain("https://lnkd.in/abc", "https://acme.vn")).toBeNull();
+    expect(candidateDomain("https://jobs.ashbyhq.com/acme", "https://acme.vn")).toBeNull();
+    expect(candidateDomain("https://acme.sharepoint.com/sites/x", "https://acme.vn")).toBeNull();
   });
 
   it("accepts an IT company in Ho Chi Minh City with a careers link", () => {
