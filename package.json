@@ -13,7 +13,8 @@
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
-    "pg": "8.23.1"
+    "pg": "8.23.1",
+    "cheerio": "1.2.0"
   },
   "devDependencies": {
     "@types/node": "26.6.5",

@@ -1,10 +1,12 @@
 // Worker loop: claim a task, run its handler, record the outcome. Counters are flushed to crawl_runs every minute.
 import { pool } from "./db.js";
 import { blockHost, claim, complete, fail, releaseStaleLocks, type Task } from "./queue.js";
-import { handlers, HostRefusedError } from "./handlers/index.js";
+import { handlers as baseHandlers, HostRefusedError } from "./handlers/index.js";
+import { sourceHandlers } from "./sources/index.js";
 import { escapeHtml, sendMessage } from "./telegram.js";
 
 type Counters = { fetched: number; errors: number; llmCalls: number; tasks: number };
+const handlers = { ...baseHandlers, ...sourceHandlers };
 const IDLE_WAIT_MS = 5_000;
 const FLUSH_EVERY_MS = 60_000;
 
