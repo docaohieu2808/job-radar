@@ -44,20 +44,22 @@ export async function noteOutboundLinks(companyId: number, pageUrl: string, page
   if (hops > MAX_HOPS) return 0;
   const domains = [...new Set(pageLinks.map((l) => candidateDomain(l.url, pageUrl)).filter((d): d is string => Boolean(d)))].slice(0, PER_PAGE);
   let added = 0;
-  for (const domain of domains) {
-    // Sites already in the registry are not candidates.
-    const known = await pool.query("SELECT 1 FROM companies WHERE website = $1 OR website = $2 LIMIT 1", [`https://${domain}`, `https://www.${domain}`]);
-    if (known.rowCount) continue;
-    const r = await pool.query(
-      `INSERT INTO domain_candidates (domain, found_on, from_company, hops) VALUES ($1, $2, $3, $4) ON CONFLICT (domain) DO NOTHING`,
-      [domain, pageUrl, companyId, hops],
-    );
-    if (r.rowCount) {
-      await enqueue("candidate-check", `https://${domain}`, { priority: 92, payload: { domain } });
-      added++;
-    }
-  }
+  for (const domain of domains) if (await addCandidate(domain, pageUrl, companyId, hops)) added++;
   return added;
+}
+
+// A new candidate site, unless it is already a company or was seen before. Also used for the Common Crawl import.
+export async function addCandidate(domain: string, foundOn: string, fromCompany: number | null, hops: number, priority = 92): Promise<boolean> {
+  if (NOT_A_CANDIDATE.test(domain) || PUBLIC_SECTOR.test(domain)) return false;
+  const known = await pool.query("SELECT 1 FROM companies WHERE website = $1 OR website = $2 LIMIT 1", [`https://${domain}`, `https://www.${domain}`]);
+  if (known.rowCount) return false;
+  const r = await pool.query(
+    "INSERT INTO domain_candidates (domain, found_on, from_company, hops) VALUES ($1, $2, $3, $4) ON CONFLICT (domain) DO NOTHING",
+    [domain, foundOn, fromCompany, hops],
+  );
+  if (!r.rowCount) return false;
+  await enqueue("candidate-check", `https://${domain}`, { priority, payload: { domain } });
+  return true;
 }
 
 const IT_WORDS = [

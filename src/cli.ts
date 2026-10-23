@@ -5,6 +5,7 @@ import { rescoreAll } from "./store.js";
 import { ensureCompany, websiteFromEmails } from "./companies.js";
 import { normalizeUrl } from "./sources/career.js";
 import { loadPrefs } from "./settings.js";
+import { addCandidate } from "./sources/discovery.js";
 
 const [command, ...args] = process.argv.slice(2);
 try {
@@ -44,6 +45,18 @@ try {
     }
     console.log(`synced ${rows.length} postings`);
   }
+  else if (command === "import-candidates") {
+    // "domain<TAB>url" lines on stdin (tools/common-crawl-import.sh) become discovery candidates, checked at low priority.
+    let input = "";
+    for await (const chunk of process.stdin) input += chunk;
+    let added = 0;
+    const lines = input.split("\n").filter((l) => l && !l.startsWith("#"));
+    for (const line of lines) {
+      const [domain, url] = line.split("\t");
+      if (domain && (await addCandidate(domain.trim().toLowerCase(), `common crawl: ${url ?? ""}`.slice(0, 500), null, 1, 95))) added++;
+    }
+    console.log(`imported ${added} new candidates from ${lines.length} lines`);
+  }
   else if (command === "matches") {
     // The Inbox as plain text, for answering "any good jobs today?" from a terminal or a chat session:
     // open, untriaged postings at or above the Inbox threshold, first seen in the last N days (default 7).
@@ -71,7 +84,7 @@ try {
       console.log(`  ${r.url ?? ""}  (web: https://jobs.docaohieu.com/#/jobs/${r.id})`);
     }
   }
-  else throw new Error("usage: enqueue <kind> <url> | rescore | sync-companies | normalize-career-pages | matches [days]");
+  else throw new Error("usage: enqueue <kind> <url> | rescore | sync-companies | normalize-career-pages | matches [days] | import-candidates < tsv");
   console.log("ok");
 } finally {
   await pool.end();
