@@ -12,6 +12,9 @@ RUN npm run build
 FROM node:26-alpine
 WORKDIR /app
 ENV NODE_ENV=production
+# Chromium for career pages that only render in a browser (src/browser.ts).
+RUN apk add --no-cache chromium
+ENV CHROMIUM_PATH=/usr/bin/chromium
 COPY package.json package-lock.json ./
 RUN npm ci --omit=dev && npm cache clean --force
 COPY --from=build /app/dist ./dist

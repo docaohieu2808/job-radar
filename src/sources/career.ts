@@ -5,6 +5,7 @@ import { createHash } from "node:crypto";
 import * as cheerio from "cheerio";
 import { pool } from "../db.js";
 import { fetchSite } from "../http.js";
+import { renderPage } from "../browser.js";
 import { enqueue, pauseHost } from "../queue.js";
 import { robotsAllow } from "../robots.js";
 import { loadPrefs } from "../settings.js";
@@ -72,6 +73,19 @@ export function mainText(html: string): string {
 // A page whose HTML is an empty shell filled by JavaScript.
 export function needsBrowser(html: string, text: string): boolean {
   return text.length < 400 && /id=["'](root|app|__next)["']|__NUXT__|ng-version|data-reactroot/i.test(html);
+}
+
+// A company page as a reader sees it: plain fetch first, a headless browser only when that returns an empty
+// JavaScript shell. Robots rules were already checked by the caller for the same address.
+async function readSite(url: string): Promise<string> {
+  const html = await readSite(url);
+  if (!needsBrowser(html, mainText(html))) return html;
+  try {
+    return await renderPage(url);
+  } catch (err) {
+    console.warn(`render ${url}: ${err instanceof Error ? err.message : String(err)}`);
+    return html;
+  }
 }
 
 export type Link = { url: string; text: string };
@@ -269,7 +283,7 @@ async function discover(task: Task): Promise<HandlerResult> {
   for (const v of siteVariants(task.url)) {
     fetched++;
     try {
-      html = await fetchSite(v, { browserLike: true });
+      html = await readSite(v);
       base = v;
       break;
     } catch (err) {
@@ -299,7 +313,7 @@ async function discover(task: Task): Promise<HandlerResult> {
     const url = new URL(path, base).toString();
     if (!(await robotsAllow(url))) continue;
     try {
-      const page = await fetchSite(url, { browserLike: true });
+      const page = await readSite(url);
       fetched++;
       if (CAREER_WORDS.test(mainText(page))) {
         found = url;
@@ -351,7 +365,7 @@ async function readCareerPage(task: Task): Promise<HandlerResult> {
     await done("none", MAX_INTERVAL);
     return { recrawlAfterSeconds: MAX_INTERVAL };
   }
-  const html = await fetchSite(task.url, { browserLike: true });
+  const html = await readSite(task.url);
   const text = mainText(html);
   if (needsBrowser(html, text)) {
     await done("needs_browser", MAX_INTERVAL);
@@ -417,7 +431,7 @@ async function readCareerPage(task: Task): Promise<HandlerResult> {
 async function readCareerJob(task: Task): Promise<HandlerResult> {
   const c = await company(Number(task.payload.companyId));
   if (!c || !(await robotsAllow(task.url))) return {};
-  const html = await fetchSite(task.url, { browserLike: true });
+  const html = await readSite(task.url);
   const $ = cheerio.load(html);
   const text = mainText(html);
   // The page's own heading is cleaner than the link text, which may glue salary and deadline onto the title.
