@@ -16,7 +16,10 @@ export type SourceHealth = {
   pausedUntil: string | null;
 };
 
+export type Soak = { days: number; target: number; startedOn: string | null; done: boolean; passed: boolean; checks: { label: string; ok: boolean; detail: string }[] };
+
 export type Usage = {
+  soak: Soak;
   pagesToday: number;
   linkedinToday: number;
   linkedinLimit: number;

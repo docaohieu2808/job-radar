@@ -21,7 +21,6 @@ describe.skipIf(!testUrl)("savePosting", () => {
   beforeEach(async () => {
     await pool.query("TRUNCATE jobs, job_sources, applications, rejected_postings, settings RESTART IDENTITY CASCADE");
   });
-  afterAll(async () => pool.end());
 
   it("creates a job once and then only touches it", async () => {
     expect((await savePosting(base)).status).toBe("new");
@@ -74,3 +73,26 @@ describe.skipIf(!testUrl)("savePosting", () => {
     expect(await closeStale()).toBe(1);
   });
 });
+
+describe.skipIf(!testUrl)("one-week run", () => {
+  it("records today and gives a verdict only after seven days", async () => {
+    const { recordDay, soakStatus } = await import("../src/soak.js");
+    await pool.query("TRUNCATE daily_stats");
+    await recordDay();
+    expect((await soakStatus()).days).toBe(1);
+    expect((await soakStatus()).done).toBe(false);
+    for (let d = 1; d < 7; d++) {
+      await pool.query(
+        `INSERT INTO daily_stats (day, pages, tasks, errors, hosts_worked, busiest_tasks, linkedin_tasks, companies, career_found, postings)
+         VALUES (current_date - $1::int, 100, 100, 1, 10, 20, 50, 1, 1, 1)`,
+        [d],
+      );
+    }
+    const soak = await soakStatus();
+    expect(soak.done).toBe(true);
+    expect(soak.checks.find((c) => c.label === "At least 1,000 hosts")?.ok).toBe(false);
+    expect(soak.passed).toBe(false);
+  });
+});
+
+afterAll(async () => pool.end());

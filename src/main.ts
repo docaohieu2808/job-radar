@@ -5,6 +5,7 @@ import { migrate } from "./migrate.js";
 import { Worker } from "./worker.js";
 import { seedSources } from "./sources/index.js";
 import { closeStale } from "./store.js";
+import { recordDay } from "./soak.js";
 
 const HOUR_MS = 3600_000;
 
@@ -16,8 +17,13 @@ async function main(): Promise<void> {
   const controller = new AbortController();
   for (const sig of ["SIGTERM", "SIGINT"] as const) process.on(sig, () => controller.abort());
 
-  // Postings no source has listed for a week are closed; checking hourly is plenty.
-  const sweeper = setInterval(() => void closeStale().catch((err) => console.error("close stale failed", err)), HOUR_MS);
+  // Hourly: close postings no source lists any more, and record today's numbers for the one-week run.
+  const hourly = () => {
+    void closeStale().catch((err) => console.error("close stale failed", err));
+    void recordDay().catch((err) => console.error("daily stats failed", err));
+  };
+  hourly();
+  const sweeper = setInterval(hourly, HOUR_MS);
   controller.signal.addEventListener("abort", () => clearInterval(sweeper), { once: true });
 
   await new Worker(config.workerConcurrency).run(controller.signal);

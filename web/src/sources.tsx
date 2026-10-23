@@ -95,6 +95,34 @@ export function SourcesScreen({ app }: { app: App }) {
           </div>
         );
       })}
+      <SoakSection app={app} />
     </div>
+  );
+}
+
+// The plan's one-week run, measured by the crawler: day count, then a verdict per check.
+function SoakSection({ app }: { app: App }) {
+  const soak = app.data!.usage.soak;
+  const verdict = !soak.done ? `Day ${soak.days} of ${soak.target}` : soak.passed ? "Passed" : "Needs attention";
+  const color = !soak.done ? "var(--info)" : soak.passed ? "var(--ok)" : "var(--warn)";
+  return (
+    <section style={css("padding:24px")}>
+      <div style={css("display:flex;align-items:baseline;gap:12px")}>
+        <h2 style={css("margin:0;font-size:14px;font-weight:600")}>One-week run</h2>
+        <span style={css(`display:flex;align-items:center;gap:6px;font-size:13px;font-weight:500;color:${color}`)}><span style={css(`width:6px;height:6px;border-radius:9999px;background:${color}`)} />{verdict}</span>
+      </div>
+      <p style={css("margin:4px 0 0;font-size:13px;color:var(--ink3)")}>
+        {soak.startedOn ? `Recorded hourly since ${soak.startedOn}; the verdict comes once seven days are in.` : "Starts with the first hour of crawling."}
+      </p>
+      <div style={css("margin-top:8px;max-width:760px")}>
+        {soak.checks.map((c) => (
+          <div key={c.label} style={css("display:grid;grid-template-columns:16px minmax(0,1fr) minmax(0,1.4fr);column-gap:12px;align-items:center;height:40px;border-bottom:1px solid var(--line);font-size:13px")}>
+            <Icon id={c.ok ? "check" : "alert"} style={css(`color:${c.ok ? "var(--ok)" : "var(--warn)"}`)} />
+            <span style={css("color:var(--ink);font-weight:500")}>{c.label}</span>
+            <span style={css("color:var(--ink3)")}>{c.detail}</span>
+          </div>
+        ))}
+      </div>
+    </section>
   );
 }

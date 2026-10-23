@@ -5,6 +5,7 @@ import { clearRefusals, complete, deferTask, fail, pauseHost, type Task } from "
 import { HostRefusedError } from "../handlers/index.js";
 import { sourceHandlers } from "../sources/index.js";
 import type { SourceHealth, Usage } from "./view-types.js";
+import { soakStatus } from "../soak.js";
 
 const SOURCES = [
   { id: "linkedin", name: "LinkedIn", host: "www.linkedin.com", note: "one request every 5 minutes" },
@@ -83,6 +84,7 @@ export async function sourceHealth(): Promise<{ sources: SourceHealth[]; usage: 
   return {
     sources,
     usage: {
+      soak: await soakStatus(),
       pagesToday: Number(u.pages ?? 0), linkedinToday: Number(u.linkedin), linkedinLimit: LINKEDIN_DAILY_LIMIT, lastChecked: u.last?.toISOString() ?? null,
       coverage: { posting: Number(cov.rows[0].posting), tracked: Number(cov.rows[0].tracked) },
     },
