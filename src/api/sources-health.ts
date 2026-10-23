@@ -76,6 +76,7 @@ export async function sourceHealth(): Promise<{ sources: SourceHealth[]; usage: 
 
   sources.push(await careerHealth());
   sources.push(await directoryHealth());
+  sources.push(await discoveryHealth());
 
   const { rows } = await pool.query<{ pages: string | null; linkedin: string; last: Date | null }>(
     `SELECT (SELECT sum(fetched) FROM crawl_runs WHERE started_at >= date_trunc('day', now() AT TIME ZONE 'Asia/Ho_Chi_Minh') AT TIME ZONE 'Asia/Ho_Chi_Minh') AS pages,
@@ -146,6 +147,19 @@ async function directoryHealth(): Promise<SourceHealth> {
     status: errors ? "Degraded" : "Healthy", lastRun: r.last_run?.toISOString() ?? null, seen24h: Number(r.companies), errors,
     error: errors && r.last_error ? explain("TopDev", r.last_error, null).error : null,
     errorDetail: errors ? "Retrying with a longer wait." : null, pausedUntil: null,
+  };
+}
+
+// Sites found by following links from company pages, and what the filter decided about them.
+async function discoveryHealth(): Promise<SourceHealth> {
+  const { rows } = await pool.query<{ status: string; n: string }>("SELECT status, count(*) AS n FROM domain_candidates GROUP BY status");
+  const n = (s: string) => Number(rows.find((r) => r.status === s)?.n ?? 0);
+  const last = await pool.query<{ t: Date | null }>("SELECT max(checked_at) AS t FROM domain_candidates");
+  const fmt = (x: number) => x.toLocaleString("en-US");
+  return {
+    id: "discovery", name: "Link discovery", kind: "Discovery",
+    note: `${fmt(n("accepted"))} companies found by following links · ${fmt(n("rejected"))} sites rejected · ${fmt(n("pending"))} waiting · ${fmt(n("error"))} unreachable`,
+    status: "Healthy", lastRun: last.rows[0]?.t?.toISOString() ?? null, seen24h: n("accepted"), errors: 0, error: null, errorDetail: null, pausedUntil: null,
   };
 }
 

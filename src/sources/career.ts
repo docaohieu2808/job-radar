@@ -14,6 +14,7 @@ import { contentHash, markSeen, savePosting } from "../store.js";
 import { askJson } from "../llm.js";
 import { HostRefusedError } from "../handlers/index.js";
 import { detectAts, listAtsJobs, type Ats } from "./ats.js";
+import { noteOutboundLinks } from "./discovery.js";
 import { HOUR, type Source } from "./types.js";
 import type { Task } from "../queue.js";
 import type { HandlerResult } from "../handlers/index.js";
@@ -27,7 +28,7 @@ const WATCH_INTERVAL = 12 * HOUR;
 // A site with no career page yet is looked at again weekly: companies add one when they start hiring.
 const REDISCOVER_AFTER = 7 * DAY;
 const MAX_LISTING_CHILDREN = 3;
-const CAREER_WORDS = /tuyển dụng|tuyen-dung|tuyendung|careers?\b|\bjobs?\b|join us|join-us|recruit|cơ hội nghề nghiệp|co-hoi-nghe-nghiep|việc làm|viec-lam|work with us|talent[- ]acquisition|vacanc(y|ies)|we'?re hiring/i;
+export const CAREER_WORDS = /tuyển dụng|tuyen-dung|tuyendung|careers?\b|\bjobs?\b|join us|join-us|recruit|cơ hội nghề nghiệp|co-hoi-nghe-nghiep|việc làm|viec-lam|work with us|talent[- ]acquisition|vacanc(y|ies)|we'?re hiring/i;
 // A listing page, not one posting: "/jobs", "/careers/openings", "Vị trí đang tuyển", "Cơ hội nghề nghiệp".
 const LISTING_WORDS = /\/(jobs|careers?|openings?|positions?|vacancies|tuyen-dung|co-hoi-nghe-nghiep|recruitment|talent-acquisition)\/?$|vị trí đang tuyển|việc làm đang tuyển|open (positions|roles)|all jobs|xem tất cả|cơ hội nghề nghiệp/i;
 export const CAREER_WORDS_FOR_TEST = CAREER_WORDS;
@@ -77,7 +78,7 @@ export function needsBrowser(html: string, text: string): boolean {
 
 // A company page as a reader sees it: plain fetch first, a headless browser only when that returns an empty
 // JavaScript shell. Robots rules were already checked by the caller for the same address.
-async function readSite(url: string): Promise<string> {
+export async function readSite(url: string): Promise<string> {
   const html = await readSite(url);
   if (!needsBrowser(html, mainText(html))) return html;
   try {
@@ -299,6 +300,7 @@ async function discover(task: Task): Promise<HandlerResult> {
     return { fetched, recrawlAfterSeconds: REDISCOVER_AFTER };
   }
   const all = links(html, base);
+  await noteOutboundLinks(c.id, base, all);
   const atsLink = all.map((l) => ({ l, ats: detectAts(l.url) })).find((x) => x.ats);
   if (atsLink) {
     await addCareerPage(c.id, atsLink.l.url, atsLink.ats, 0);
@@ -373,6 +375,7 @@ async function readCareerPage(task: Task): Promise<HandlerResult> {
     return { fetched: 1, recrawlAfterSeconds: MAX_INTERVAL };
   }
   const all = links(html, task.url);
+  await noteOutboundLinks(c.id, task.url, all);
   const atsLink = all.map((l) => ({ l, ats: detectAts(l.url) })).find((x) => x.ats);
   if (atsLink) {
     // The page only points to an ATS board: read the board from now on.

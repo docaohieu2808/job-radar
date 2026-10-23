@@ -9,9 +9,10 @@ import { vietnamworks } from "./vietnamworks.js";
 import { career } from "./career.js";
 import { directory } from "./directory.js";
 import { remoteBoards } from "./remote-boards.js";
+import { discovery } from "./discovery.js";
 import type { Source } from "./types.js";
 
-export const sources: Source[] = [linkedin, itviec, topdev, vietnamworks, remoteBoards, career, directory];
+export const sources: Source[] = [linkedin, itviec, topdev, vietnamworks, remoteBoards, career, directory, discovery];
 
 export const sourceHandlers: Record<string, Handler> = Object.assign({}, ...sources.map((s) => s.handlers));
 
