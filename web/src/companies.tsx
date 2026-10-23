@@ -187,7 +187,7 @@ function CareerSection({ app, c }: { app: App; c: CompanyAgg }) {
         <span style={css(`width:6px;height:6px;border-radius:9999px;background:${line.color}`)} />{line.text}
         {c.info?.careerUrl && <a href={c.info.careerUrl} target="_blank" rel="noopener" style={css("font-size:13px;font-weight:500;display:flex;align-items:center;gap:4px")}>Open<Icon id="ext" /></a>}
       </p>
-      {c.info?.website && source && <p style={css("margin:6px 0 0;font-size:13px;color:var(--ink3)")}>Website from {source === "owner" ? "you" : source === "contact email" ? "the contact e-mail in a posting" : source === "topdev" ? "TopDev" : "VietnamWorks"}.</p>}
+      {c.info?.website && source && <p style={css("margin:6px 0 0;font-size:13px;color:var(--ink3)")}>Website from {source === "owner" ? "you" : source === "contact email" ? "the contact e-mail in a posting" : source === "topdev" ? "TopDev" : source === "remote board" ? "a link in a remote-board posting" : "VietnamWorks"}.</p>}
       <div style={css("margin-top:16px;display:flex;gap:8px;max-width:480px")}>
         <input value={draft} onChange={(e) => setDraft(e.target.value)} placeholder={c.info?.website ? "Use a different website" : "Company website, e.g. tinhvan.com"} className="hv-ctl fc-acc"
           onKeyDown={(e) => { if (e.key === "Enter" && draft.trim()) { void app.setWebsite(c.name, draft.trim()); setDraft(""); } }}

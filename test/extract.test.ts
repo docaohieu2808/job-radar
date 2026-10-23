@@ -96,8 +96,18 @@ describe("scoring traps from real postings", () => {
   it("keeps remote work abroad but drops offices abroad named in a title or address", () => {
     expect(isWantedLocation("", "hybrid", "Senior AWS DevOps Engineer https://netcompany.com/job/REF5842J-Leeds")).toBe(false);
     expect(isWantedLocation("", "unknown", "Cloud Platform Engineer - Thailand, Bangkok")).toBe(false);
-    expect(isWantedLocation("Singapore", "remote")).toBe(true);
+    expect(isWantedLocation("Singapore", "remote")).toBe(false);
+    expect(isWantedLocation("Remote (Australia, Singapore, Vietnam)", "remote")).toBe(true);
+    expect(isWantedLocation("Remote (San Francisco)", "remote")).toBe(false);
     expect(isWantedLocation("Ho Chi Minh City", "onsite", "DevOps Engineer (Remote Japan)")).toBe(true);
+  });
+
+  it("keeps remote work open to Vietnam and drops remote limited to elsewhere", () => {
+    expect(isWantedLocation("Remote (worldwide)", "remote")).toBe(true);
+    expect(isWantedLocation("Europe, LATAM, APAC, the U.S., Canada", "remote")).toBe(true);
+    expect(isWantedLocation("Remote - United States", "remote")).toBe(false);
+    expect(isWantedLocation("Time zone: CET (+/- 3 hours)", "remote")).toBe(false);
+    expect(isWantedLocation("Vietnam", "remote")).toBe(true);
   });
 
   it("does not read company age as required experience", () => {

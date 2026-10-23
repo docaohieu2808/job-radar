@@ -175,7 +175,7 @@ export function siteVariants(url: string): string[] {
 
 const RETRY_AFTER_FAILURES = [24 * HOUR, 7 * 24 * HOUR];
 
-async function addCareerPage(companyId: number, rawUrl: string, ats: Ats | null, depth: number): Promise<void> {
+export async function addCareerPage(companyId: number, rawUrl: string, ats: Ats | null, depth: number): Promise<void> {
   const url = normalizeUrl(rawUrl);
   const { rows } = await pool.query<{ id: string }>(
     `INSERT INTO career_pages (company_id, url, kind, ats_kind, status, depth) VALUES ($1, $2, $3, $4, 'found', $5)

@@ -15,6 +15,12 @@ const SOURCE_NAMES: Record<string, string> = {
   itviec: "ITviec",
   topdev: "TopDev",
   vietnamworks: "VietnamWorks",
+  himalayas: "Himalayas",
+  weworkremotely: "We Work Remotely",
+  workingnomads: "Working Nomads",
+  remotive: "Remotive",
+  remoteok: "Remote OK",
+  jobicy: "Jobicy",
   career: "Career page",
 };
 

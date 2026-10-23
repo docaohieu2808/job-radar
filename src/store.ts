@@ -26,6 +26,8 @@ export type Posting = {
   closed?: boolean;
   // The company's own website when the source states it (TopDev, VietnamWorks profile).
   companyWebsite?: { url: string | null; source: string };
+  // A link to the company's applicant tracking board found in the posting (Greenhouse, Lever, ...).
+  companyAts?: string | null;
 };
 
 export type SaveResult = { status: "skipped" | "new" | "reposted" | "updated" | "unchanged"; jobId?: number; score?: number };

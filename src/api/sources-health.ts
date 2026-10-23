@@ -12,6 +12,13 @@ const SOURCES = [
   { id: "itviec", name: "ITviec", host: "itviec.com", note: "salary hidden without sign-in" },
   { id: "topdev", name: "TopDev", host: "api.topdev.vn", note: "salary hidden without sign-in" },
   { id: "vietnamworks", name: "VietnamWorks", host: "ms.vietnamworks.com", note: "" },
+  // Remote boards abroad: only roles open to someone in Vietnam are kept.
+  { id: "himalayas", name: "Himalayas", host: "himalayas.app", note: "remote, open to Vietnam" },
+  { id: "weworkremotely", name: "We Work Remotely", host: "weworkremotely.com", note: "remote, DevOps and Sysadmin feed" },
+  { id: "workingnomads", name: "Working Nomads", host: "www.workingnomads.com", note: "remote" },
+  { id: "remotive", name: "Remotive", host: "remotive.com", note: "remote, published API" },
+  { id: "remoteok", name: "Remote OK", host: "remoteok.com", note: "remote, published API" },
+  { id: "jobicy", name: "Jobicy", host: "jobicy.com", note: "remote, published API" },
 ];
 
 export const LINKEDIN_DAILY_LIMIT = 100;

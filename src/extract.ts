@@ -251,8 +251,18 @@ const ABROAD = /\b(japan|tokyo|osaka|singapore|thailand|bangkok|malaysia|kuala l
 
 // HCMC or remote. Remote work for a company abroad is welcome; going to an office abroad or in another
 // Vietnamese city is not. `other` is the title and address, where career sites often put the city.
+// Regions a remote posting may be limited to that leave Vietnam out ("Remote - US", "Europe only", "CET +/- 3 h").
+// Asian countries are listed too: "Remote (India)" means India only, while a list that includes Vietnam passes first.
+const REMOTE_ELSEWHERE = /\b(us|u\.s\.|usa|united states|americas?|north america|canada|uk|united kingdom|europe|european|eu|emea|latam|latin america|brazil|brasil|mexico|colombia|argentina|chile|peru|germany|deutschland|france|spain|portugal|poland|romania|netherlands|ireland|switzerland|austria|italy|sweden|denmark|norway|finland|czech|hungary|ukraine|turkey|israel|south africa|nigeria|kenya|egypt|india|pakistan|bangladesh|philippines|indonesia|malaysia|singapore|thailand|japan|korea|china|taiwan|hong kong|australia|new zealand|san francisco|new york|seattle|austin|boston|chicago|los angeles|denver|toronto|vancouver|london|berlin|munich|amsterdam|paris|madrid|lisbon|warsaw|dublin|bangalore|bengaluru|manila|jakarta|sydney|melbourne|cet|cest|est|pst|cst|gmt[-−]\d|utc[-−]\d)\b/i;
+const REMOTE_OPEN = /worldwide|anywhere|global|everywhere|vietnam|việt nam|\bapac\b|asia|gmt\s*\+\s*[5-9]|utc\s*\+\s*[5-9]|\bict\b|ho chi minh|hcm/i;
+
+// A remote posting is open from here unless its stated region names only places elsewhere.
+export function remoteOpenToVietnam(region: string): boolean {
+  return !region.trim() || REMOTE_OPEN.test(region) || !REMOTE_ELSEWHERE.test(region);
+}
+
 export function isWantedLocation(location: string, workMode: WorkMode, other = ""): boolean {
-  if (workMode === "remote") return true;
+  if (workMode === "remote") return remoteOpenToVietnam(location);
   if (HCMC.test(location)) return true;
   if (ABROAD.test(location) || ABROAD.test(other.replace(/[-_/%]+/g, " "))) return false;
   return !OTHER_CITY.test(location);

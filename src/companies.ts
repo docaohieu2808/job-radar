@@ -6,10 +6,10 @@ import { normalizeKey } from "./normalize-key.js";
 import { enqueue } from "./queue.js";
 
 // Where a website came from, best first. A better source replaces a worse one.
-const SOURCE_RANK: Record<string, number> = { owner: 4, topdev: 3, vietnamworks: 2, "contact email": 1 };
+const SOURCE_RANK: Record<string, number> = { owner: 4, topdev: 3, vietnamworks: 2, "contact email": 1, "remote board": 1 };
 
 const FREE_MAIL = /(^|\.)(gmail|yahoo|outlook|hotmail|icloud|live|msn|proton|protonmail|aol|zoho)\./i;
-const NOT_A_COMPANY_SITE = /(^|\.)(itviec|topcv|topdev|vietnamworks|linkedin|facebook|google|youtube|careerviet|careerlink|glints|indeed|vieclam24h)\./i;
+const NOT_A_COMPANY_SITE = /(^|\.)(itviec|topcv|topdev|vietnamworks|linkedin|facebook|google|youtube|careerviet|careerlink|glints|indeed|vieclam24h|himalayas|weworkremotely|workingnomads|twitter|x|instagram|github|medium)\./i;
 
 export function siteRoot(raw: string): string | null {
   try {
@@ -30,6 +30,18 @@ export function websiteFromEmails(companyName: string, text: string): string | n
     if (FREE_MAIL.test(domain)) continue;
     const label = domain.split(".").slice(0, -1).filter((p) => !["com", "vn", "co", "net", "jsc"].includes(p)).pop() ?? "";
     if (label.length >= 3 && (key.includes(label.replace(/-/g, "")) || label.replace(/-/g, "").includes(key))) return siteRoot(domain);
+  }
+  return null;
+}
+
+// A link in a remote-board posting whose domain resembles the company name ("https://alpaca.markets" for "Alpaca").
+export function websiteFromLinks(companyName: string, text: string): string | null {
+  const key = normalizeKey(companyName).replace(/\s+/g, "");
+  for (const m of text.matchAll(/https?:\/\/[^\s"'<>)]+/g)) {
+    const root = siteRoot(m[0]);
+    if (!root) continue;
+    const label = new URL(root).hostname.split(".").filter((p) => p.length >= 3 && !["www", "com", "net", "org", "app", "careers", "jobs"].includes(p))[0] ?? "";
+    if (label.length >= 3 && (key.includes(label.replace(/-/g, "")) || label.replace(/-/g, "").includes(key))) return root;
   }
   return null;
 }
