@@ -1,5 +1,6 @@
 // Everything the screens need in one read: postings with their sources and status, companies, source health.
 // The owner has a few hundred postings at most, so one payload is simpler than paging.
+import { active, loadLearned, MIN_LABELS } from "../learn.js";
 import { pool } from "../db.js";
 import { OWNER_STACK } from "../extract.js";
 import { loadPrefs } from "../settings.js";
@@ -104,7 +105,12 @@ export async function loadState(): Promise<StateView> {
   }
 
   const health = await sourceHealth();
-  return { now: new Date().toISOString(), prefs, postings, companies: [...byKey.values()], sources: health.sources, usage: health.usage };
+  const m = await loadLearned();
+  const learning = {
+    labels: m?.labels ?? 0, liked: m?.liked ?? 0, skipped: m?.skipped ?? 0, needed: MIN_LABELS, active: active(m),
+    top: m ? Object.entries(m.delta).sort((a, b) => Math.abs(b[1]) - Math.abs(a[1])).slice(0, 6).map(([k, d]) => ({ label: m.labelOf[k], points: Math.round(d) })) : [],
+  };
+  return { now: new Date().toISOString(), prefs, learning, postings, companies: [...byKey.values()], sources: health.sources, usage: health.usage };
 }
 
 // The parts of a posting only the detail pane needs.

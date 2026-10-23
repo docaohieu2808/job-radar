@@ -20,6 +20,24 @@ const WL: Record<keyof Weights, [string, string]> = {
 
 const RANGE = css("width:100%;accent-color:var(--btn)");
 
+// What the score learned from the owner's Interested / Applied / Skip decisions.
+function Learning({ app }: { app: App }) {
+  const l = app.data!.learning;
+  const text = l.active
+    ? `Learning from ${l.labels} of your decisions (${l.liked} kept, ${l.skipped} skipped). New scores move by up to 15 points.`
+    : `Learns from your decisions once you have marked ${l.needed}, some kept and some skipped. So far: ${l.labels}.`;
+  return (
+    <div style={css("margin-top:20px;padding:12px 16px;border-radius:10px;border:1px solid var(--line);font-size:14px;color:var(--ink)")}>
+      <div>{text}</div>
+      {l.active && l.top.length > 0 && (
+        <div style={css("margin-top:6px;font-size:13px;color:var(--ink3)")}>
+          {l.top.map((t) => `${t.points > 0 ? "+" : ""}${t.points} ${t.label}`).join(" · ")}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function Scoring({ app, prefs }: { app: App; prefs: Prefs }) {
   const [w, setW] = useState<Weights>(prefs.weights);
   const [inboxMin, setInboxMin] = useState(prefs.inboxMin);
@@ -39,6 +57,7 @@ function Scoring({ app, prefs }: { app: App; prefs: Prefs }) {
     <>
       <h2 style={css("margin:0;font-size:20px;font-weight:600")}>Scoring</h2>
       <p style={css("margin:4px 0 0;font-size:13px;color:var(--ink3)")}>How much each factor counts toward the match score.</p>
+      <Learning app={app} />
       <div style={css("margin-top:20px;padding:12px 16px;border-radius:10px;background:var(--sunk);font-size:14px;color:var(--ink)")}>
         With these weights, <strong style={css("font-weight:600")}>{pass} of {today.length} recent postings</strong> reach the Inbox and {top} are top matches.
       </div>

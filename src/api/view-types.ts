@@ -69,9 +69,13 @@ export type CompanyView = {
   careerCheckedAt: string | null;
 };
 
+// What the score has learned from the owner's triage so far.
+export type LearningView = { labels: number; liked: number; skipped: number; needed: number; active: boolean; top: { label: string; points: number }[] };
+
 export type StateView = {
   now: string;
   prefs: Prefs;
+  learning: LearningView;
   postings: PostingView[];
   companies: CompanyView[];
   sources: SourceHealth[];

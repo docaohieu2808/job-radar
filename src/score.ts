@@ -15,8 +15,9 @@ export function salaryInMillionVnd(facts: Facts): number | null {
   return (s.currency === "USD" ? top * VND_PER_USD : top) / 1_000_000;
 }
 
-export function scorePosting(facts: Facts, weights: Weights = DEFAULT_WEIGHTS): Score {
-  const reasons: Reason[] = [];
+// `extra` carries reasons computed elsewhere: what was learned from the owner's triage.
+export function scorePosting(facts: Facts, weights: Weights = DEFAULT_WEIGHTS, extra: Reason[] = []): Score {
+  const reasons: Reason[] = [...extra];
   let cat: Category = "salary";
   const add = (points: number, label: string) => points !== 0 && reasons.push({ points, label, cat });
 

@@ -6,6 +6,19 @@ import { pool } from "./db.js";
 import { loadDescription, loadState } from "./api/state.js";
 import { tryNow } from "./api/sources-health.js";
 import { BadRequest, NotFound, setStatus, setWatch, setWebsite, updatePrefs } from "./api/actions.js";
+import { relearn } from "./learn.js";
+import { rescoreAll } from "./store.js";
+
+// A burst of triage clicks refits the model once, a few seconds after the last one, then rescores the postings.
+let relearnTimer: NodeJS.Timeout | null = null;
+function relearnSoon(): void {
+  if (relearnTimer) clearTimeout(relearnTimer);
+  relearnTimer = setTimeout(() => {
+    void relearn()
+      .then(() => rescoreAll())
+      .catch((err) => console.error("relearn failed", err));
+  }, 5_000);
+}
 
 const PORT = Number(process.env.PORT ?? 8080);
 const STATIC_DIR = path.resolve(process.cwd(), "web/dist");
@@ -47,6 +60,7 @@ async function api(req: IncomingMessage, res: ServerResponse, url: URL): Promise
     const body = await readBody(req);
     const note = body.note === undefined ? undefined : body.note === null ? null : String(body.note).slice(0, 500);
     await setStatus(Number(parts[2]), String(body.status), note);
+    relearnSoon();
     return send(res, 200, { ok: true });
   }
   if (method === "POST" && parts[1] === "companies" && parts[2] === "watch") {

@@ -6,6 +6,7 @@ import { pool, withTransaction } from "./db.js";
 import { extractFacts, isRelevantTitle, isWantedLocation, type WorkMode } from "./extract.js";
 import type { Prefs } from "./prefs.js";
 import { scorePosting } from "./score.js";
+import { factsFeatures, learnedReasons, loadLearned } from "./learn.js";
 import { loadPrefs } from "./settings.js";
 import { normalizeKey } from "./normalize-key.js";
 import { ensureCompany, websiteFromEmails } from "./companies.js";
@@ -65,7 +66,8 @@ export async function savePosting(p: Posting): Promise<SaveResult> {
     return { status: "skipped" };
   }
 
-  const { score, reasons } = scorePosting(facts, prefs.weights);
+  const learned = learnedReasons(await loadLearned(), factsFeatures(facts, p.companyName, p.source));
+  const { score, reasons } = scorePosting(facts, prefs.weights, learned);
   const emailSite = websiteFromEmails(p.companyName, p.description);
   const companyId = await ensureCompany(p.companyName, p.companyWebsite?.url ? p.companyWebsite : emailSite ? { url: emailSite, source: "contact email" } : null);
   const hash = contentHash(p.description);
@@ -176,8 +178,11 @@ export async function rescoreAll(): Promise<number> {
   const prefs = await loadPrefs();
   const { rows } = await pool.query<{
     id: number; title: string; description: string; stack: string[]; salary_min: string | null; salary_max: string | null; currency: string | null; location: string; urls: string;
+    company_name: string; source: string | null;
   }>(`SELECT id, title, coalesce(description, '') AS description, stack, salary_min, salary_max, currency, coalesce(location, '') AS location,
-             coalesce((SELECT string_agg(s.url, ' ') FROM job_sources s WHERE s.job_id = jobs.id), '') AS urls FROM jobs`);
+             coalesce((SELECT string_agg(s.url, ' ') FROM job_sources s WHERE s.job_id = jobs.id), '') AS urls, company_name,
+             (SELECT s.source FROM job_sources s WHERE s.job_id = jobs.id ORDER BY s.id LIMIT 1) AS source FROM jobs`);
+  const model = await loadLearned();
   let dropped = 0;
   for (const r of rows) {
     const facts = extractFacts({ title: r.title, text: r.description, tags: r.stack });
@@ -204,7 +209,7 @@ export async function rescoreAll(): Promise<number> {
         currency: r.currency === "USD" ? "USD" : "VND",
       };
     }
-    const { score, reasons } = scorePosting(facts, prefs.weights);
+    const { score, reasons } = scorePosting(facts, prefs.weights, learnedReasons(model, factsFeatures(facts, r.company_name, r.source)));
     await pool.query(
       `UPDATE jobs SET work_mode=$2, level=$3, years=$4, stack=$5, english_required=$6, cert_support=$7,
               raw_excerpts = raw_excerpts || $8::jsonb, score=$9, score_reasons=$10 WHERE id=$1`,
