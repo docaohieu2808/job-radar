@@ -16,7 +16,7 @@ type Page = { data: { display_name?: string; website?: string | null }[]; meta: 
 export const directory: Source = {
   name: "directory",
   hostIntervalSeconds: { "api.topdev.vn": 20 },
-  seeds: [{ kind: "directory-topdev", url: directoryUrl(1), priority: 95 }],
+  seeds: [{ kind: "directory-topdev", url: directoryUrl(1), priority: 55 }],
   handlers: {
     "directory-topdev": async (task) => {
       const body = await fetchJson<Page>(task.url);
@@ -26,7 +26,8 @@ export const directory: Source = {
       }
       // Page 1 is the recurring entry point; it queues the following page, which queues the next, and so on.
       const page = body.meta.current_page;
-      if (page < body.meta.last_page) await enqueue("directory-topdev", directoryUrl(page + 1), { priority: 95 });
+      // One request brings 100 companies, so the directory goes ahead of the per-site work it creates.
+      if (page < body.meta.last_page) await enqueue("directory-topdev", directoryUrl(page + 1), { priority: 55 });
       return { fetched: 1, recrawlAfterSeconds: page === 1 ? 7 * 24 * HOUR : undefined };
     },
   },
