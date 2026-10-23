@@ -231,7 +231,7 @@ export function useApp() {
     setData((d) => {
       if (!d) return d;
       const has = d.companies.some((c) => c.key === key);
-      const companies = has ? d.companies.map((c) => (c.key === key ? { ...c, watch } : c)) : [...d.companies, { key, name, watch, website: null, websiteSource: null, careerStatus: "unknown", careerUrl: null, careerKind: null, careerCheckedAt: null }];
+      const companies = has ? d.companies.map((c) => (c.key === key ? { ...c, watch } : c)) : [...d.companies, { key, name, watch, website: null, websiteSource: null, careerStatus: "unknown", careerUrl: null, careerKind: null, careerCheckedAt: null, relevance: 0, relevanceReasons: [] }];
       return { ...d, companies };
     });
     api.watch(name, watch).catch(() => {

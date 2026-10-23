@@ -15,16 +15,13 @@ import { askJson } from "../llm.js";
 import { HostRefusedError } from "../handlers/index.js";
 import { detectAts, listAtsJobs, type Ats } from "./ats.js";
 import { noteOutboundLinks } from "./discovery.js";
+import { readInterval } from "../relevance.js";
 import { HOUR, type Source } from "./types.js";
 import type { Task } from "../queue.js";
 import type { HandlerResult } from "../handlers/index.js";
 
 const DAY = 24 * HOUR;
 const MAX_INTERVAL = 7 * DAY;
-// Every career page is read at least daily, quiet or not, so any company's new opening shows the same day;
-// watched companies twice a day. Unchanged pages cost one request and a hash comparison.
-const QUIET_PAGE_INTERVAL = DAY;
-const WATCH_INTERVAL = 12 * HOUR;
 // A site with no career page yet is looked at again weekly: companies add one when they start hiring.
 const REDISCOVER_AFTER = 7 * DAY;
 const MAX_LISTING_CHILDREN = 3;
@@ -157,9 +154,9 @@ const CITY = /(h[oồ] ch[ií] minh|hcm|sài gòn|saigon|hà nội|ha noi|hanoi|
 
 const urlId = (url: string) => createHash("sha1").update(url).digest("hex").slice(0, 16);
 
-async function company(id: number): Promise<{ id: number; name: string; watch: boolean } | null> {
-  const { rows } = await pool.query<{ id: string; name: string; watch: boolean }>("SELECT id, name, watch FROM companies WHERE id = $1", [id]);
-  return rows[0] ? { id: Number(rows[0].id), name: rows[0].name, watch: Boolean(rows[0].watch) } : null;
+async function company(id: number): Promise<{ id: number; name: string; watch: boolean; relevance: number } | null> {
+  const { rows } = await pool.query<{ id: string; name: string; watch: boolean; relevance: number }>("SELECT id, name, watch, relevance FROM companies WHERE id = $1", [id]);
+  return rows[0] ? { id: Number(rows[0].id), name: rows[0].name, watch: Boolean(rows[0].watch), relevance: rows[0].relevance } : null;
 }
 
 async function setCareerStatus(companyId: number, status: string): Promise<void> {
@@ -345,7 +342,8 @@ async function readCareerPage(task: Task): Promise<HandlerResult> {
   if (!page) return {};
   const c = await company(Number(page.company_id));
   if (!c) return {};
-  const cap = c.watch ? WATCH_INTERVAL : QUIET_PAGE_INTERVAL;
+  // Best-first: relevant companies are read every 6 or 12 hours, the rest daily (src/relevance.ts).
+  const cap = readInterval(c.relevance, c.watch);
   const daily = Math.min(DAY, cap);
   const done = async (status: string, interval: number, extra: { found?: number; hash?: string; changed?: boolean } = {}) => {
     await pool.query(

@@ -7,6 +7,7 @@ import { seedSources } from "./sources/index.js";
 import { closeStale } from "./store.js";
 import { recordDay } from "./soak.js";
 import { relearn } from "./learn.js";
+import { recomputeRelevance } from "./relevance.js";
 
 const HOUR_MS = 3600_000;
 
@@ -22,7 +23,9 @@ async function main(): Promise<void> {
   const hourly = () => {
     void closeStale().catch((err) => console.error("close stale failed", err));
     void recordDay().catch((err) => console.error("daily stats failed", err));
-    void relearn().catch((err) => console.error("relearn failed", err));
+    void relearn()
+      .then(() => recomputeRelevance())
+      .catch((err) => console.error("relearn or relevance failed", err));
   };
   hourly();
   const sweeper = setInterval(hourly, HOUR_MS);

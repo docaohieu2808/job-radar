@@ -67,6 +67,9 @@ export type CompanyView = {
   careerUrl: string | null;
   careerKind: string | null;
   careerCheckedAt: string | null;
+  // Best-first frontier: how likely a DevOps opening is here, and why.
+  relevance: number;
+  relevanceReasons: string[];
 };
 
 // What the score has learned from the owner's triage so far.

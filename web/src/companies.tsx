@@ -175,6 +175,14 @@ export function CompanyScreen({ app, companyKey }: { app: App; companyKey: strin
   );
 }
 
+// Mirrors src/relevance.ts: relevant companies are read more often, every company at least daily.
+function readCadence(info: CompanyView | undefined): string {
+  const r = info?.relevance ?? 0;
+  const hours = Math.min(r >= 50 ? 6 : r >= 25 ? 12 : 24, info?.watch ? 12 : 24);
+  const why = info?.relevanceReasons.length ? ` (${info.relevanceReasons.join(", ")})` : "";
+  return `Relevance ${r}${why}. Read every ${hours} hours.`;
+}
+
 function CareerSection({ app, c }: { app: App; c: CompanyAgg }) {
   const [draft, setDraft] = useState("");
   const line = careerLine(c.info, app.now);
@@ -182,7 +190,7 @@ function CareerSection({ app, c }: { app: App; c: CompanyAgg }) {
   return (
     <section>
       <h2 style={css("margin:0;font-size:14px;font-weight:600")}>Career page</h2>
-      <p style={css("margin:4px 0 0;font-size:13px;color:var(--ink3)")}>Checked daily when it changes, weekly when it stays the same.</p>
+      <p style={css("margin:4px 0 0;font-size:13px;color:var(--ink3)")}>{readCadence(c.info)}</p>
       <p style={css("margin:12px 0 0;display:flex;align-items:center;gap:8px;font-size:14px;color:var(--ink)")}>
         <span style={css(`width:6px;height:6px;border-radius:9999px;background:${line.color}`)} />{line.text}
         {c.info?.careerUrl && <a href={c.info.careerUrl} target="_blank" rel="noopener" style={css("font-size:13px;font-weight:500;display:flex;align-items:center;gap:4px")}>Open<Icon id="ext" /></a>}
