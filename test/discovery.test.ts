@@ -19,12 +19,19 @@ describe("link discovery", () => {
 
   it("accepts an IT company in Ho Chi Minh City with a careers link", () => {
     const html = page(
-      `<p>Công ty TNHH Acme cung cấp giải pháp phần mềm, cloud và chuyển đổi số cho doanh nghiệp. Văn phòng tại Quận 1, TP.HCM.</p>
+      `<p>Công ty TNHH Acme cung cấp giải pháp phần mềm, dịch vụ outsourcing và chuyển đổi số cho doanh nghiệp. Văn phòng tại Quận 1, TP.HCM.</p>
        <p>Our engineers build web and mobile apps.${filler}</p><a href="/careers">Careers</a>`,
     );
     const s = scoreCandidate(html, "acme.vn");
     expect(s.score).toBeGreaterThanOrEqual(60);
     expect(s.careerLink).toBe(true);
+  });
+
+  it("rejects a non-IT company even with a careers link and an HCMC address", () => {
+    const html = page(`<p>Công ty CP Xây dựng Hoàng Nam thi công nhà xưởng tại TP.HCM. Đội ngũ kỹ sư giàu kinh nghiệm.${filler}</p><a href="/tuyen-dung">Tuyển dụng</a>`, "Xây dựng Hoàng Nam");
+    const s = scoreCandidate(html, "xaydung.vn");
+    expect(s.core).toBe(0);
+    expect(s.score).toBeLessThanOrEqual(25);
   });
 
   it("rejects an online shop and a parked domain", () => {

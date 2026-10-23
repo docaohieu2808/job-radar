@@ -62,22 +62,25 @@ export async function addCandidate(domain: string, foundOn: string, fromCompany:
   return true;
 }
 
-const IT_WORDS = [
-  /phần mềm|software/i, /công nghệ thông tin|information technology|\bIT (services|company|solutions|outsourcing)\b/i, /outsourc|gia công/i,
-  /\bsaas\b|platform|nền tảng/i, /cloud|điện toán đám mây|devops|kubernetes/i, /chuyển đổi số|digital transformation/i,
-  /fintech|blockchain|\bAI\b|machine learning|trí tuệ nhân tạo|data (platform|engineering)/i, /developers?|engineers?|kỹ sư|lập trình/i,
-  /web (and|&) mobile|mobile app|ứng dụng di động|app development/i, /giải pháp công nghệ|technology (company|solutions|partner)/i,
+// What the business is: core signals say "software / IT company"; a careers link or an HCMC address alone does not.
+const CORE_IT = [
+  /phần mềm|software/i, /công nghệ thông tin|information technology|\bIT (services|company|solutions|outsourcing|consulting)\b/i,
+  /outsourc|gia công phần mềm|offshore development|dedicated team/i, /\bsaas\b|software as a service/i,
+  /lập trình|app development|web (and|&) mobile|mobile app development|phát triển ứng dụng/i, /cloud (services|solutions|platform)|devops|kubernetes/i,
+  /chuyển đổi số|digital transformation/i, /fintech|blockchain|machine learning|trí tuệ nhân tạo|artificial intelligence/i,
 ];
 const HCMC = /h[oồ] ch[ií] minh|tp\.? ?hcm|\bhcmc\b|sài gòn|saigon/i;
 const VIETNAM = /việt nam|vietnam|viet nam|hà nội|hanoi|đà nẵng|da nang/i;
 const REMOTE = /remote[- ]first|fully remote|work from anywhere|distributed team|remote team/i;
-const COMPANY = /công ty (tnhh|cổ phần|cp)|\bjsc\b|co\.,? ?ltd|\binc\b|\bllc\b|\bgmbh\b|pte\.? ltd|mã số thuế|\bmst\b|copyright|©/i;
+const COMPANY = /công ty (tnhh|cổ phần|cp)|\bjsc\b|co\.,? ?ltd|\binc\b|\bllc\b|\bgmbh\b|pte\.? ltd|mã số thuế|\bmst\b/i;
 const SHOP = /giỏ hàng|thêm vào giỏ|add to cart|mua ngay|thanh toán khi nhận hàng|free shipping/i;
+const MEDIA_OR_SCHOOL = /báo điện tử|tạp chí|cơ quan (chủ quản|ngôn luận)|tòa soạn|trường (đại học|cao đẳng|thpt|mầm non|quốc tế)|học viện|university|tuyển sinh/i;
 const PARKED = /domain (is )?for sale|buy this domain|parked|tên miền (này )?đang được bán/i;
 
-export type CandidateScore = { score: number; reasons: string[]; name: string; careerLink: boolean };
+export type CandidateScore = { score: number; core: number; reasons: string[]; name: string; careerLink: boolean };
 
 // Rule score 0–100 from the home page; the reasons are kept for the Sources screen and for checking by hand.
+// No core IT signal caps the score below the LLM band: such sites are rejected on the rules alone.
 export function scoreCandidate(html: string, domain: string): CandidateScore {
   const text = mainText(html);
   const $ = cheerio.load(html);
@@ -85,16 +88,16 @@ export function scoreCandidate(html: string, domain: string): CandidateScore {
   const all = `${text}\n${meta.filter(Boolean).join(" ")}`;
   const reasons: string[] = [];
   let score = 0;
-  const it = IT_WORDS.filter((r) => r.test(all)).length;
-  if (it) {
-    score += Math.min(40, it * 8);
-    reasons.push(`${it} IT signals`);
+  const core = CORE_IT.filter((r) => r.test(all)).length;
+  if (core) {
+    score += Math.min(48, core * 12);
+    reasons.push(`${core} IT business signal${core > 1 ? "s" : ""}`);
   }
   if (HCMC.test(all)) {
-    score += 20;
+    score += 15;
     reasons.push("Ho Chi Minh City");
   } else if (VIETNAM.test(all) || /\.vn$/.test(domain)) {
-    score += 10;
+    score += 8;
     reasons.push("Vietnam");
   }
   if (REMOTE.test(all)) {
@@ -102,23 +105,28 @@ export function scoreCandidate(html: string, domain: string): CandidateScore {
     reasons.push("remote team");
   }
   if (COMPANY.test(all)) {
-    score += 10;
+    score += 5;
     reasons.push("company details");
   }
   const careerLink = links(html, `https://${domain}`).some((l) => CAREER_WORDS.test(`${l.text} ${l.url}`));
   if (careerLink) {
-    score += 20;
+    score += 10;
     reasons.push("careers link");
   }
   if (SHOP.test(all)) {
-    score -= 20;
+    score -= 30;
     reasons.push("online shop");
+  }
+  if (MEDIA_OR_SCHOOL.test(all)) {
+    score -= 30;
+    reasons.push("news site or school");
   }
   if (PARKED.test(all) || text.length < 200) {
     score -= 50;
     reasons.push(text.length < 200 ? "almost empty page" : "parked domain");
   }
-  return { score: Math.max(0, Math.min(100, score)), reasons, name: siteName(html, domain), careerLink };
+  if (!core) score = Math.min(score, REJECT_AT);
+  return { score: Math.max(0, Math.min(100, score)), core, reasons, name: siteName(html, domain), careerLink };
 }
 
 export function siteName(html: string, domain: string): string {
@@ -132,20 +140,24 @@ export function siteName(html: string, domain: string): string {
 
 type LlmVerdict = { it_company: boolean; vietnam_or_remote: boolean; name: string };
 
-async function checkCandidate(domain: string): Promise<void> {
+async function checkCandidate(domain: string): Promise<"done" | "later"> {
   const url = `https://${domain}`;
   const decide = (status: string, score: number | null, by: string | null, reason: string, companyId: number | null = null) =>
     pool.query(
       "UPDATE domain_candidates SET status = $2, score = $3, decided_by = $4, reason = $5, company_id = $6, checked_at = now() WHERE domain = $1",
       [domain, status, score, by, reason, companyId],
     );
-  if (!(await robotsAllow(url))) return void (await decide("rejected", null, "rules", "robots.txt disallows the home page"));
+  if (!(await robotsAllow(url))) {
+    await decide("rejected", null, "rules", "robots.txt disallows the home page");
+    return "done";
+  }
   let html: string;
   try {
     html = await readSite(url);
   } catch (err) {
     if (err instanceof HostRefusedError) throw err;
-    return void (await decide("error", null, null, err instanceof Error ? err.message.slice(0, 200) : String(err)));
+    await decide("error", null, null, err instanceof Error ? err.message.slice(0, 200) : String(err));
+    return "done";
   }
   const s = scoreCandidate(html, domain);
   let accept = s.score >= ACCEPT_AT;
@@ -158,21 +170,27 @@ async function checkCandidate(domain: string): Promise<void> {
         "services or a tech product (not a shop, school, news site or agency directory); vietnam_or_remote = it has an office in " +
         "Vietnam or hires remote engineers; name = the company's name.",
       `Domain: ${domain}\n\n${mainText(html).slice(0, 4000)}`,
+      "discovery",
     );
     if (v) {
       accept = v.it_company && v.vietnam_or_remote;
       by = "llm";
       if (v.name?.trim()) name = v.name.trim().slice(0, 80);
     } else {
-      // No LLM budget left today: decide on the rules alone, leaning towards keeping.
-      accept = s.score >= (ACCEPT_AT + REJECT_AT) / 2;
+      // No LLM budget left today: ask again tomorrow rather than guess.
+      await pool.query("UPDATE domain_candidates SET score = $2, reason = $3 WHERE domain = $1", [domain, s.score, `waiting for a second opinion: ${s.reasons.join(", ")}`]);
+      return "later";
     }
   }
-  if (!accept) return void (await decide("rejected", s.score, by, s.reasons.join(", ") || "no IT or location signals"));
+  if (!accept) {
+    await decide("rejected", s.score, by, s.reasons.join(", ") || "no IT or location signals");
+    return "done";
+  }
   const { rows } = await pool.query<{ hops: number }>("SELECT hops FROM domain_candidates WHERE domain = $1", [domain]);
   const companyId = await ensureCompany(name, { url, source: "discovered link" }, pool, "link");
   await pool.query("UPDATE companies SET discovery_hops = GREATEST(discovery_hops, $2) WHERE id = $1 AND discovered_via = 'link'", [companyId, rows[0]?.hops ?? 1]);
   await decide("accepted", s.score, by, s.reasons.join(", "), companyId);
+  return "done";
 }
 
 export const discovery: Source = {
@@ -180,8 +198,8 @@ export const discovery: Source = {
   seeds: [],
   handlers: {
     "candidate-check": async (task) => {
-      await checkCandidate(String(task.payload.domain));
-      return { fetched: 1 };
+      const result = await checkCandidate(String(task.payload.domain));
+      return result === "later" ? { fetched: 1, recrawlAfterSeconds: 24 * 3600 } : { fetched: 1 };
     },
   },
 };

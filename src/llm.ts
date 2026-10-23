@@ -4,21 +4,24 @@ import { pool } from "./db.js";
 import { config } from "./config.js";
 
 export const LLM_DAILY_LIMIT = 200;
+// Link discovery has its own budget so judging new sites never starves reading career pages, and vice versa.
+const BUDGETS = { pages: { prefix: "llm-calls", limit: LLM_DAILY_LIMIT }, discovery: { prefix: "llm-discovery", limit: 300 } } as const;
+export type Budget = keyof typeof BUDGETS;
 
 export function llmEnabled(): boolean {
   return Boolean(config.llmBaseUrl && config.llmApiKey && config.llmModel);
 }
 
 // Counts the call against today's budget (UTC day); false when the budget is used up.
-async function takeBudget(): Promise<boolean> {
-  const key = `llm-calls-${new Date().toISOString().slice(0, 10)}`;
+async function takeBudget(budget: Budget): Promise<boolean> {
+  const key = `${BUDGETS[budget].prefix}-${new Date().toISOString().slice(0, 10)}`;
   const { rows } = await pool.query<{ n: number }>(
     `INSERT INTO settings (key, value) VALUES ($1, '1'::jsonb)
      ON CONFLICT (key) DO UPDATE SET value = to_jsonb((settings.value)::text::int + 1), updated_at = now()
      RETURNING (value)::text::int AS n`,
     [key],
   );
-  return rows[0].n <= LLM_DAILY_LIMIT;
+  return rows[0].n <= BUDGETS[budget].limit;
 }
 
 export async function llmCallsToday(): Promise<number> {
@@ -27,8 +30,8 @@ export async function llmCallsToday(): Promise<number> {
 }
 
 // Asks for JSON and returns the parsed object, or null when disabled, over budget or unparseable.
-export async function askJson<T>(system: string, user: string): Promise<T | null> {
-  if (!llmEnabled() || !(await takeBudget())) return null;
+export async function askJson<T>(system: string, user: string, budget: Budget = "pages"): Promise<T | null> {
+  if (!llmEnabled() || !(await takeBudget(budget))) return null;
   const res = await fetch(`${config.llmBaseUrl}/chat/completions`, {
     method: "POST",
     headers: { "content-type": "application/json", authorization: `Bearer ${config.llmApiKey}` },
