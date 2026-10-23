@@ -7,8 +7,6 @@ function required(name: string): string {
 
 export const config = {
   databaseUrl: required("DATABASE_URL"),
-  telegramToken: process.env.TELEGRAM_BOT_TOKEN ?? "",
-  telegramChatId: process.env.TELEGRAM_CHAT_ID ?? "",
   llmBaseUrl: process.env.LLM_BASE_URL ?? "",
   llmApiKey: process.env.LLM_API_KEY ?? "",
   llmModel: process.env.LLM_MODEL ?? "",

@@ -1,4 +1,4 @@
-// Match score 0–100 from the owner's criteria. Every point carries a reason, shown in the digest and the UI.
+// Match score 0–100 from the owner's criteria. Every point carries a reason, shown on the web screens.
 import { OWNER_STACK, type Facts } from "./extract.js";
 
 export type Reason = { points: number; label: string };

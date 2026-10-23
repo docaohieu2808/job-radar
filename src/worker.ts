@@ -3,7 +3,6 @@ import { pool } from "./db.js";
 import { blockHost, claim, complete, fail, releaseStaleLocks, type Task } from "./queue.js";
 import { handlers as baseHandlers, HostRefusedError } from "./handlers/index.js";
 import { sourceHandlers } from "./sources/index.js";
-import { escapeHtml, sendMessage } from "./telegram.js";
 
 type Counters = { fetched: number; errors: number; llmCalls: number; tasks: number };
 const handlers = { ...baseHandlers, ...sourceHandlers };
@@ -58,13 +57,13 @@ export class Worker {
       this.counters.errors++;
       const message = err instanceof Error ? err.message : String(err);
       if (err instanceof HostRefusedError) {
+        // The pause is visible on the Sources screen (hosts.blocked_until).
         await blockHost(task.host, new Date(Date.now() + err.retryAfterSeconds * 1000));
-        await sendMessage(`Source paused: <b>${escapeHtml(task.host)}</b> answered ${err.status}. Retrying after ${Math.round(err.retryAfterSeconds / 3600)} h.`).catch(() => {});
+        console.warn(`${task.host} answered ${err.status}; paused for ${err.retryAfterSeconds}s`);
       }
       const outcome = await fail(task, message);
-      if (outcome === "dead") {
-        await sendMessage(`Task gave up after ${task.attempts} attempts: ${escapeHtml(task.kind)} ${escapeHtml(task.url)}\n${escapeHtml(message)}`).catch(() => {});
-      }
+      // A task that gave up keeps last_error; the Sources screen lists those.
+      if (outcome === "dead") console.error(`gave up after ${task.attempts} attempts: ${task.kind} ${task.url}: ${message}`);
     }
   }
 
