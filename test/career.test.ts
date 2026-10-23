@@ -53,6 +53,19 @@ describe("career pages", () => {
     expect(isListing({ url: "https://x.vn/about", text: "Vị trí đang tuyển" })).toBe(true);
   });
 
+  it("tells job titles from service pages", async () => {
+    const { looksLikeJobTitle, looksLikePosting } = await import("../src/sources/career.js");
+    const { DEFAULT_PREFS } = await import("../src/prefs.js");
+    const kw = DEFAULT_PREFS.keywords;
+    expect(looksLikeJobTitle("Infrastructure & Cloud Operations Engineer", kw)).toBe(true);
+    expect(looksLikeJobTitle("Senior SRE / Observability Engineer", kw)).toBe(true);
+    expect(looksLikeJobTitle("Cloud & DevOps Services", kw)).toBe(false);
+    expect(looksLikeJobTitle("Infrastructure Advisory", kw)).toBe(false);
+    expect(looksLikeJobTitle("Hỗ trợ vận hành hệ thống CNTT", kw)).toBe(false);
+    expect(looksLikePosting("Mô tả công việc ... Yêu cầu: 3 năm kinh nghiệm ... Quyền lợi")).toBe(true);
+    expect(looksLikePosting("Our DevOps services help you scale. Contact us.")).toBe(false);
+  });
+
   it("spots an empty JavaScript shell", () => {
     expect(needsBrowser('<div id="root"></div><script src="/app.js"></script>', "")).toBe(true);
     expect(needsBrowser("<main>long text</main>", "x".repeat(500))).toBe(false);

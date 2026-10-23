@@ -84,6 +84,23 @@ export function wantedCareerLocation(location: string): boolean {
   return /remote/i.test(location) && /apac|asia|vietnam|anywhere|worldwide/i.test(location);
 }
 
+// A job title names a role; service and product pages ("Cloud & DevOps Services", "Infrastructure Advisory") do not.
+const ROLE = /engineer|kỹ sư|ky su|specialist|chuyên viên|administrator|\badmin\b|\blead\b|manager|trưởng nhóm|trưởng phòng|architect|developer|\bsre\b|devops\b.*(engineer|lead)|intern|thực tập|nhân viên|consultant/i;
+
+export function looksLikeJobTitle(text: string, keywords: string[]): boolean {
+  return text.length >= 5 && text.length <= 140 && ROLE.test(text) && isRelevantTitle(text, keywords);
+}
+
+// A posting page carries at least two of the usual posting sections; a service page rarely does.
+const POSTING_MARKERS = [
+  /yêu cầu|requirements?|qualifications?/i, /quyền lợi|phúc lợi|benefits?|what we offer/i, /mô tả công việc|job description|responsibilities|trách nhiệm/i,
+  /ứng tuyển|nộp hồ sơ|apply now|apply for this|gửi cv|send (your )?cv/i, /kinh nghiệm|experience/i, /mức lương|salary|thu nhập/i,
+];
+
+export function looksLikePosting(text: string): boolean {
+  return POSTING_MARKERS.filter((m) => m.test(text)).length >= 2;
+}
+
 const CITY = /(h[oồ] ch[ií] minh|hcm|sài gòn|saigon|hà nội|ha noi|hanoi|đà nẵng|da nang)[^\n]{0,40}/i;
 
 const urlId = (url: string) => createHash("sha1").update(url).digest("hex").slice(0, 16);
@@ -249,7 +266,7 @@ export const career: Source = {
       }
 
       const prefs = await loadPrefs();
-      const jobLinks = all.filter((l) => sameSite(l.url, task.url) && l.url !== task.url && l.text.length >= 5 && l.text.length <= 140 && isRelevantTitle(l.text, prefs.keywords));
+      const jobLinks = all.filter((l) => sameSite(l.url, task.url) && l.url !== task.url && looksLikeJobTitle(l.text, prefs.keywords));
       const unknown = new Set(await markSeen("career", jobLinks.map((l) => urlId(l.url))));
       for (const l of jobLinks) {
         if (unknown.has(urlId(l.url))) await enqueue("career-job", l.url, { priority: 65, payload: { companyId: c.id, title: l.text } });
@@ -273,7 +290,7 @@ export const career: Source = {
         );
         if (r) llmCalls++;
         for (const p of r?.postings ?? []) {
-          if (!p.title || !isRelevantTitle(p.title, prefs.keywords)) continue;
+          if (!p.title || !looksLikeJobTitle(p.title, prefs.keywords)) continue;
           const url = p.url ? new URL(p.url, task.url).toString() : task.url;
           if (p.url && sameSite(url, task.url) && url !== task.url) {
             await enqueue("career-job", url, { priority: 65, payload: { companyId: c.id, title: p.title } });
@@ -294,6 +311,14 @@ export const career: Source = {
       const $ = cheerio.load(html);
       const text = mainText(html);
       const title = String(task.payload.title || $("h1").first().text().trim() || $("title").text().trim());
+      if (!looksLikePosting(text)) {
+        await pool.query(
+          `INSERT INTO rejected_postings (source, external_id, reason) VALUES ('career', $1, 'not a posting')
+           ON CONFLICT (source, external_id) DO UPDATE SET reason = EXCLUDED.reason, rejected_at = now()`,
+          [urlId(task.url)],
+        );
+        return { fetched: 1 };
+      }
       await saveCareerPosting(c.name, { id: urlId(task.url), url: task.url, title, location: CITY.exec(text)?.[0] ?? "", description: text });
       return { fetched: 1 };
     },
