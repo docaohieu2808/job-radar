@@ -85,8 +85,11 @@ const server = createServer(async (req, res) => {
   const url = new URL(req.url ?? "/", "http://localhost");
   try {
     if (url.pathname === "/health") {
+      // Down when the crawler has not finished any task for six hours: the status page then shows it.
       const { rows } = await pool.query<{ last: Date | null }>("SELECT max(last_run_at) AS last FROM crawl_queue");
-      return send(res, 200, { ok: true, lastRun: rows[0].last });
+      const last = rows[0].last;
+      const ok = Boolean(last && Date.now() - last.getTime() < 6 * 3600_000);
+      return send(res, ok ? 200 : 503, { ok, lastRun: last });
     }
     if (url.pathname.startsWith("/api/")) return await api(req, res, url);
     await serveStatic(res, url.pathname);
