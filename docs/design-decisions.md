@@ -111,9 +111,24 @@ Job Radar gom tin từ mọi nguồn, gộp các tin trùng, chấm điểm theo
 - **Theo dõi:** `/health` trả 503 nếu 6 giờ không có việc nào chạy xong. Status page của fleet probe endpoint này qua agent trong tailnet.
 - **Log:** stdout của container, Promtail gom về Loki.
 - **Backup:** `pg_dump` nằm trong bộ backup Kopia chạy hằng đêm của node.
-- **Test:** 50 test unit và integration chạy trên Postgres thật trong compose (`--profile test`). Có test parser trên HTML/JSON thật đã lưu, test hàng đợi (SKIP LOCKED, politeness, backoff), test gộp tin, test robots.txt.
+- **Test:** 84 test unit và integration chạy trên Postgres thật trong compose (`--profile test`). Có test parser trên HTML/JSON thật đã lưu, test hàng đợi (SKIP LOCKED, politeness, backoff), test gộp tin, test robots.txt.
 
-## 11. Câu hỏi phỏng vấn mẫu
+## 11. Từ crawler lấy tin thành focused crawler
+
+Chương 9 của Alex Xu dạy crawler tổng quát: từ vài URL hạt giống, tải trang, rút link, lọc, lặp lại để lan ra cả web. Job Radar lúc đầu chỉ đọc nguồn có sẵn (job board, danh bạ). Bản sau thêm bốn phần để thành **focused crawler**, tức crawler có chủ đề:
+
+- **Tự lan (URL extractor + URL filter của chương 9, nhưng có chủ đề).**
+  - Link từ trang công ty sang tên miền khác thành ứng viên. Ví dụ tinhvan.com dẫn sang tso.vn.
+  - Mỗi tháng quét chỉ mục Parquet công khai của Common Crawl, lấy các site `.vn` có trang tuyển dụng (khoảng 8.400 site mỗi lần, đọc trong 8 phút nhờ thống kê theo cột của Parquet).
+  - Bộ lọc chủ đề: luật trước. Không có dấu hiệu "doanh nghiệp IT" thì loại, dù có link tuyển dụng và địa chỉ TP.HCM. Ca lưng chừng thì hỏi Gemini, có hạn mức riêng. Hết hạn mức thì để mai, không đoán.
+  - Chống spider trap: tối đa 2 hop tính từ công ty đã biết.
+- **Best-first frontier.** Điểm liên quan của công ty quyết định thứ tự trong hàng đợi và nhịp đọc (6, 12 hoặc 24 giờ). Không đọc đều nhau.
+- **Độ tin cậy.** Trang có thật là tin tuyển dụng không, site có đúng của công ty không, tin có cũ, đăng lại, qua trung gian hay vắng trên trang chính thức không. Mỗi cờ là một lý do hiện trên màn hình.
+- **Học từ phản hồi.** Mỗi lần chủ máy bấm Interested, Applied hay Skip là một nhãn. Mô hình tỉ lệ thích theo từng đặc trưng (có làm mượt) đẩy điểm tin mới lên hoặc xuống trong ±15 điểm, mạnh dần theo số nhãn. Chương 9 không có vòng phản hồi này.
+
+Bài học khi làm: lần đầu bộ lọc chủ đề nhận cả công ty xây dựng, dược, báo, chỉ vì có link tuyển dụng và địa chỉ TP.HCM. Soát tay 25 site thì chỉ khoảng 7 đúng. Sửa bằng cách bắt buộc phải có dấu hiệu IT cốt lõi, và không nghiêng về nhận khi thiếu ý kiến thứ hai.
+
+## 12. Câu hỏi phỏng vấn mẫu
 
 1. **Vì sao dùng `SKIP LOCKED`?** Để nhiều worker lấy việc song song từ một bảng mà không khoá chờ nhau, cũng không lấy trùng việc. Dòng nào đang bị worker khác khoá thì bỏ qua và lấy dòng kế.
 2. **Làm sao không bị chặn?** Mỗi host có khoảng nghỉ riêng, khoá theo host trong transaction. Bị 429 thì dừng 15 phút và gấp đôi dần. Tôn trọng robots.txt. User-Agent có ghi email liên hệ. Không đăng nhập, không vượt captcha.
@@ -125,3 +140,5 @@ Job Radar gom tin từ mọi nguồn, gộp các tin trùng, chấm điểm theo
    - Lưu HTML thô vào object storage.
    - Thêm trình duyệt headless cho trang dùng JavaScript.
    - Theo dõi theo từng nguồn bằng metric thay vì chỉ đọc log.
+6. **Crawler của ông tìm công ty mới thế nào, và sao không lan ra cả web?** Hai đường: link từ trang công ty đã biết, và chỉ mục Common Crawl. Mỗi tên miền mới qua bộ lọc chủ đề (luật, rồi LLM cho ca lưng chừng). Chỉ lan tiếp từ site đã được nhận, tối đa 2 hop. Đó là focused crawler: chỉ đi theo hướng có khả năng gặp đúng loại trang mình cần.
+7. **Làm sao crawler "học" gu của ông?** Mỗi quyết định trên Inbox là một nhãn. Với mỗi đặc trưng (kỹ năng, công ty, cấp bậc, hình thức làm...), tính tỉ lệ được giữ có làm mượt Laplace rồi so với tỉ lệ chung. Chênh lệch đổi ra điểm, giới hạn ±15 và nhân với độ tin theo số nhãn (đủ 40 nhãn mới đạt tối đa). Không dùng model đen, để mỗi lần điểm đổi vẫn giải thích được bằng một câu.
