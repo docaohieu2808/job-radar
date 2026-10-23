@@ -29,10 +29,17 @@ describe("facts", () => {
     expect(detectLevel("Senior DevOps Engineer", "")).toMatchObject({ level: "senior" });
     expect(detectLevel("Devops Engineer (từ 3 năm KN)", "")).toMatchObject({ level: "middle", years: 3 });
     expect(detectLevel("DevOps Lead", "")).toMatchObject({ level: "lead" });
+    expect(detectLevel("DevOps Engineer", "1-3 years of experience with DevOps tools")).toMatchObject({ level: "middle", years: 1 });
+    expect(detectLevel("DevOps Engineer (Mid/Senior)", "")).toMatchObject({ level: "middle" });
+    expect(detectLevel("DevOps Engineer", "At least 1 year of experience")).toMatchObject({ level: "junior" });
+    expect(detectLevel("DevOps Engineer", "6+ years of experience")).toMatchObject({ level: "senior" });
   });
 
   it("reads work mode, English and certification support", () => {
     expect(detectWorkMode("9-11 Dong Da\nHybrid\nPosted 7 days ago").mode).toBe("hybrid");
+    expect(detectWorkMode("Ho Chi Minh\nAt office\nWe also support remote teams in Europe").mode).toBe("onsite");
+    expect(detectWorkMode("Collaborate with remote teams", "Senior DevOps Engineer").mode).toBe("unknown");
+    expect(detectWorkMode("", "DevOps Engineer (Remote Japan)").mode).toBe("remote");
     expect(detectEnglish("Fluent English communication").english).toBe("fluent");
     expect(detectEnglish("Tiếng Anh giao tiếp").english).toBe("good");
     expect(detectCertSupport("Được hỗ trợ 50% chi phí các khóa học bên ngoài, hỗ trợ 100% chi phí thi các chứng chỉ liên quan đến IT").cert).toBe(true);

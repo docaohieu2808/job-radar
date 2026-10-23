@@ -125,19 +125,35 @@ export function detectLevel(title: string, text: string): { level: Level; years:
   else if (/\bfresher|junior\b/i.test(t)) level = "junior";
   else if (/\b(manager|head of|trưởng phòng)\b/i.test(t)) level = "manager";
   else if (/\b(lead|principal|architect|trưởng nhóm)\b/i.test(t)) level = "lead";
-  else if (/\b(senior|sr\.?)\b/i.test(t)) level = "senior";
+  // "Mid/Senior", "Middle to Senior": the posting is open to middle.
   else if (/\b(middle|mid|intermediate)\b/i.test(t)) level = "middle";
+  else if (/\b(senior|sr\.?)\b/i.test(t)) level = "senior";
 
-  const yearsHit = firstMatch(`${title}\n${text}`, /(?:ít nhất|tối thiểu|at least|minimum|từ|over|trên)?\s*(\d{1,2})\s*\+?\s*(?:-\s*\d{1,2}\s*)?(?:năm|years?|yrs?)\b/i);
+  // "3+ years", "1-3 years", "từ 3 năm": the lower bound is the requirement, the upper bound tells whether middle fits.
+  const yearsHit = firstMatch(`${title}\n${text}`, /(\d{1,2})\s*\+?\s*(?:(?:-|–|~|to|đến)\s*(\d{1,2})\s*)?(?:năm|years?|yrs?)\b/i);
   const years = yearsHit ? Number(yearsHit.match[1]) : null;
-  if (level === "unknown" && years !== null) level = years <= 1 ? "junior" : years <= 4 ? "middle" : "senior";
+  const upper = yearsHit?.match[2] ? Number(yearsHit.match[2]) : years;
+  if (level === "unknown" && years !== null && upper !== null) {
+    if (years <= 4 && upper >= 2) level = "middle";
+    else if (upper <= 1) level = "junior";
+    else level = "senior";
+  }
   return { level, years, excerpt: yearsHit?.excerpt };
 }
 
-export function detectWorkMode(text: string): { mode: WorkMode; excerpt?: string } {
-  const remote = firstMatch(text, /\b(fully remote|100% remote|remote work|work from home|làm việc từ xa|\bremote\b)/i);
-  const hybrid = firstMatch(text, /\bhybrid\b|kết hợp (online|từ xa)/i);
+// A source's own work-mode line ("Hybrid", "At office") wins; otherwise only unambiguous phrases count,
+// because a bare "remote" also appears in "remote team", "remote access" and the like.
+export function detectWorkMode(text: string, title = ""): { mode: WorkMode; excerpt?: string } {
+  const line = /^\s*(hybrid|at office|on-?site|remote|fully remote|work from home)\s*$/im.exec(text);
+  if (line) {
+    const v = line[1].toLowerCase();
+    return { mode: v === "hybrid" ? "hybrid" : /remote|home/.test(v) ? "remote" : "onsite", excerpt: line[1] };
+  }
+  if (/\bremote\b/i.test(title)) return { mode: "remote", excerpt: title };
+  if (/\bhybrid\b/i.test(title)) return { mode: "hybrid", excerpt: title };
+  const hybrid = firstMatch(text, /\bhybrid (work|working|model|mode|schedule)|work(ing)? hybrid|kết hợp (online|từ xa)|\(hybrid\)/i);
   if (hybrid) return { mode: "hybrid", excerpt: hybrid.excerpt };
+  const remote = firstMatch(text, /fully remote|100% remote|remote (work|working|position|job)|work(ing)? (fully )?remote(ly)?|work from home|làm việc từ xa/i);
   if (remote) return { mode: "remote", excerpt: remote.excerpt };
   const onsite = firstMatch(text, /\b(at office|onsite|on-site|làm việc tại văn phòng)\b/i);
   return onsite ? { mode: "onsite", excerpt: onsite.excerpt } : { mode: "unknown" };
@@ -193,7 +209,7 @@ export function extractFacts(input: { title: string; text: string; tags?: string
   if (salary && input.salaryText) excerpts.salary = input.salaryText;
   const level = detectLevel(input.title, input.text);
   if (level.excerpt) excerpts.years = level.excerpt;
-  const mode = detectWorkMode(all);
+  const mode = detectWorkMode(`${(input.tags ?? []).join("\n")}\n${input.text}`, input.title);
   if (mode.excerpt) excerpts.workMode = mode.excerpt;
   const english = detectEnglish(input.text);
   if (english.excerpt) excerpts.english = english.excerpt;

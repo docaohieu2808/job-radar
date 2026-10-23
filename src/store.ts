@@ -143,3 +143,30 @@ export async function closeStale(days = 7): Promise<number> {
   );
   return rowCount ?? 0;
 }
+
+// Re-runs extraction and scoring on stored postings, after the rules change. Tags are not stored, so the
+// detected stack is passed back in as tags to keep skills that only appeared there.
+export async function rescoreAll(): Promise<number> {
+  const { rows } = await pool.query<{
+    id: number; title: string; description: string; stack: string[]; salary_min: string | null; salary_max: string | null; currency: string | null;
+  }>("SELECT id, title, coalesce(description, '') AS description, stack, salary_min, salary_max, currency FROM jobs");
+  for (const r of rows) {
+    const facts = extractFacts({ title: r.title, text: r.description, tags: r.stack });
+    // A salary that came from the source's own salary field is not in the description; keep the stored one.
+    if (!facts.salary && (r.salary_min !== null || r.salary_max !== null)) {
+      facts.salary = {
+        min: r.salary_min === null ? null : Number(r.salary_min),
+        max: r.salary_max === null ? null : Number(r.salary_max),
+        currency: r.currency === "USD" ? "USD" : "VND",
+      };
+    }
+    const { score, reasons } = scorePosting(facts);
+    await pool.query(
+      `UPDATE jobs SET work_mode=$2, level=$3, years=$4, stack=$5, english_required=$6, cert_support=$7,
+              raw_excerpts = raw_excerpts || $8::jsonb, score=$9, score_reasons=$10 WHERE id=$1`,
+      [r.id, facts.workMode, facts.level, facts.years, JSON.stringify(facts.stack), facts.english, facts.certSupport,
+        JSON.stringify(facts.excerpts), score, JSON.stringify(reasons)],
+    );
+  }
+  return rows.length;
+}
