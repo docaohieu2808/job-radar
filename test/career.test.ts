@@ -81,6 +81,12 @@ describe("career pages", () => {
     expect(CAREER_WORDS_FOR_TEST.test("Talent Acquisition /talent-acquisition")).toBe(true);
   });
 
+  it("takes a Vietnamese infra developer title from a listing", async () => {
+    const { looksLikeJobTitle } = await import("../src/sources/career.js");
+    expect(looksLikeJobTitle("Lập trình viên Infra-system-Network (2)", ["Infra", "Network"])).toBe(true);
+    expect(looksLikeJobTitle("Lập trình viên Java (10)", ["Infra", "Network"])).toBe(false);
+  });
+
   it("tries the usual spellings of a site", async () => {
     const { siteVariants } = await import("../src/sources/career.js");
     expect(siteVariants("https://fsn.vn")).toEqual(["https://fsn.vn", "https://www.fsn.vn", "http://fsn.vn", "http://www.fsn.vn"]);

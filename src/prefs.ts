@@ -21,7 +21,7 @@ export const DEFAULT_PREFS: Prefs = {
   topMin: 85,
   keywords: [
     "DevOps", "DevSecOps", "MLOps", "SRE", "Site Reliability", "Platform Engineer", "Cloud Engineer", "Cloud DevOps",
-    "Infrastructure", "System Engineer", "System Admin", "Hạ tầng", "Vận hành", "Kỹ sư hệ thống",
+    "Infrastructure", "System Engineer", "System Admin", "Hạ tầng", "Vận hành", "Kỹ sư hệ thống", "Infra", "Network",
   ],
   modes: { remote: true, hybrid: true, onsite: true },
   newDays: 14,

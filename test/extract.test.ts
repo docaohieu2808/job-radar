@@ -93,6 +93,15 @@ describe("scoring traps from real postings", () => {
     expect(detectForeignLanguage("Experience with GCP n2-standard machines is required").language).toBeNull();
   });
 
+  it("drops postings for an office in Japan", () => {
+    expect(isWantedLocation("Japan Office", "onsite")).toBe(false);
+  });
+
+  it("keeps infra and network roles titled developer", () => {
+    expect(isRelevantTitle("Lập trình viên Infra-system-Network", ["Infra"])).toBe(true);
+    expect(isRelevantTitle("Lập trình viên Java", ["Infra", "Java"])).toBe(false);
+  });
+
   it("keeps bridge engineers and testers out", () => {
     expect(isRelevantTitle("BRIDGE SYSTEM ENGINEER (BRSE)", ["system engineer", "devops"])).toBe(false);
     expect(isRelevantTitle("QA Engineer", ["engineer"])).toBe(false);

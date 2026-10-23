@@ -25,6 +25,15 @@ export async function setWatch(name: string, watch: boolean): Promise<void> {
      ON CONFLICT (key) DO UPDATE SET watch = EXCLUDED.watch`,
     [name.trim(), normalizeKey(name), watch],
   );
+  // A newly watched company is read right away, ahead of the queue, instead of on its next quiet-page date.
+  if (watch) {
+    await pool.query(
+      `UPDATE crawl_queue q SET next_fetch_at = now(), priority = LEAST(q.priority, 30)
+         FROM career_pages p JOIN companies c ON c.id = p.company_id
+        WHERE c.key = $1 AND q.kind = 'career-page' AND (q.payload->>'careerPageId')::bigint = p.id AND q.done_at IS NULL`,
+      [normalizeKey(name)],
+    );
+  }
 }
 
 // The owner's own website for a company outranks anything found automatically, and restarts discovery.

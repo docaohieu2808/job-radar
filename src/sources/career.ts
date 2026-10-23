@@ -19,7 +19,12 @@ import type { HandlerResult } from "../handlers/index.js";
 
 const DAY = 24 * HOUR;
 const MAX_INTERVAL = 7 * DAY;
-const REDISCOVER_AFTER = 30 * DAY;
+// Every career page is read at least daily, quiet or not, so any company's new opening shows the same day;
+// watched companies twice a day. Unchanged pages cost one request and a hash comparison.
+const QUIET_PAGE_INTERVAL = DAY;
+const WATCH_INTERVAL = 12 * HOUR;
+// A site with no career page yet is looked at again weekly: companies add one when they start hiring.
+const REDISCOVER_AFTER = 7 * DAY;
 const MAX_LISTING_CHILDREN = 3;
 const CAREER_WORDS = /tuyển dụng|tuyen-dung|tuyendung|careers?\b|\bjobs?\b|join us|join-us|recruit|cơ hội nghề nghiệp|co-hoi-nghe-nghiep|việc làm|viec-lam|work with us|talent[- ]acquisition|vacanc(y|ies)|we'?re hiring/i;
 // A listing page, not one posting: "/jobs", "/careers/openings", "Vị trí đang tuyển", "Cơ hội nghề nghiệp".
@@ -110,7 +115,7 @@ export function wantedCareerLocation(location: string): boolean {
 }
 
 // A job title names a role; service and product pages ("Cloud & DevOps Services", "Infrastructure Advisory") do not.
-const ROLE = /\bengineers?\b|kỹ sư|ky su|specialist|chuyên viên|administrator|\badmin\b|\blead\b|manager|trưởng nhóm|trưởng phòng|architect|developer|\bsre\b|devops\b.*\b(engineers?|lead)\b|intern|thực tập|nhân viên|consultant/i;
+const ROLE = /\bengineers?\b|kỹ sư|ky su|specialist|chuyên viên|administrator|\badmin\b|\blead\b|manager|trưởng nhóm|trưởng phòng|architect|developer|lập trình viên|\bsre\b|devops\b.*\b(engineers?|lead)\b|intern|thực tập|nhân viên|consultant/i;
 
 export function looksLikeJobTitle(text: string, keywords: string[]): boolean {
   return text.length >= 5 && text.length <= 140 && ROLE.test(text) && isRelevantTitle(text, keywords);
@@ -133,13 +138,13 @@ export function looksLikePosting(text: string): boolean {
   return POSTING_MARKERS.filter((m) => m.test(text)).length >= 2;
 }
 
-const CITY = /(h[oồ] ch[ií] minh|hcm|sài gòn|saigon|hà nội|ha noi|hanoi|đà nẵng|da nang)[^\n]{0,40}/i;
+const CITY = /(h[oồ] ch[ií] minh|hcm|sài gòn|saigon|hà nội|ha noi|hanoi|đà nẵng|da nang|japan office|văn phòng nhật bản|tokyo|osaka)[^\n]{0,40}/i;
 
 const urlId = (url: string) => createHash("sha1").update(url).digest("hex").slice(0, 16);
 
-async function company(id: number): Promise<{ id: number; name: string } | null> {
-  const { rows } = await pool.query<{ id: string; name: string }>("SELECT id, name FROM companies WHERE id = $1", [id]);
-  return rows[0] ? { id: Number(rows[0].id), name: rows[0].name } : null;
+async function company(id: number): Promise<{ id: number; name: string; watch: boolean } | null> {
+  const { rows } = await pool.query<{ id: string; name: string; watch: boolean }>("SELECT id, name, watch FROM companies WHERE id = $1", [id]);
+  return rows[0] ? { id: Number(rows[0].id), name: rows[0].name, watch: Boolean(rows[0].watch) } : null;
 }
 
 async function setCareerStatus(companyId: number, status: string): Promise<void> {
@@ -212,7 +217,7 @@ export const career: Source = {
   name: "career",
   seeds: [],
   handlers: {
-    // Website home page -> career page (or an ATS board). Re-checked monthly when nothing was found.
+    // Website home page -> career page (or an ATS board). Re-checked weekly when nothing was found.
     "career-discover": async (task) => {
       try {
         return await discover(task);
@@ -324,6 +329,8 @@ async function readCareerPage(task: Task): Promise<HandlerResult> {
   if (!page) return {};
   const c = await company(Number(page.company_id));
   if (!c) return {};
+  const cap = c.watch ? WATCH_INTERVAL : QUIET_PAGE_INTERVAL;
+  const daily = Math.min(DAY, cap);
   const done = async (status: string, interval: number, extra: { found?: number; hash?: string; changed?: boolean } = {}) => {
     await pool.query(
       `UPDATE career_pages SET status = $2, check_interval_s = $3, last_fetched_at = now(), last_error = NULL,
@@ -336,8 +343,8 @@ async function readCareerPage(task: Task): Promise<HandlerResult> {
 
   if (page.ats_kind) {
     const r = await readAts(c.name, JSON.parse(page.ats_kind) as Ats);
-    await done("found", DAY, { found: r.found });
-    return { fetched: r.fetched, recrawlAfterSeconds: DAY };
+    await done("found", daily, { found: r.found });
+    return { fetched: r.fetched, recrawlAfterSeconds: daily };
   }
 
   if (!(await robotsAllow(task.url))) {
@@ -357,13 +364,13 @@ async function readCareerPage(task: Task): Promise<HandlerResult> {
     // The page only points to an ATS board: read the board from now on.
     await pool.query("UPDATE career_pages SET kind = 'ats', ats_kind = $2 WHERE id = $1", [page.id, JSON.stringify(atsLink.ats)]);
     const r = await readAts(c.name, atsLink.ats!);
-    await done("found", DAY, { found: r.found });
-    return { fetched: 1 + r.fetched, recrawlAfterSeconds: DAY };
+    await done("found", daily, { found: r.found });
+    return { fetched: 1 + r.fetched, recrawlAfterSeconds: daily };
   }
 
   const hash = contentHash(text);
   if (hash === page.content_hash) {
-    const interval = Math.min(page.check_interval_s * 2, MAX_INTERVAL);
+    const interval = Math.min(page.check_interval_s * 2, cap);
     await done("found", interval);
     return { fetched: 1, recrawlAfterSeconds: interval };
   }
@@ -402,8 +409,8 @@ async function readCareerPage(task: Task): Promise<HandlerResult> {
       }
     }
   }
-  await done("found", DAY, { found: jobLinks.length, hash, changed: true });
-  return { fetched: 1, llmCalls, recrawlAfterSeconds: DAY };
+  await done("found", daily, { found: jobLinks.length, hash, changed: true });
+  return { fetched: 1, llmCalls, recrawlAfterSeconds: daily };
 }
 
 // One posting page found on a career page.

@@ -227,7 +227,8 @@ export function isVietnameseText(text: string): boolean {
 // Keeps postings whose title contains one of the owner's keywords. Data and developer roles are noise on a broad
 // search even when their title mentions a platform or the cloud, unless they are explicitly DevOps or SRE.
 export function isRelevantTitle(title: string, keywords: string[]): boolean {
-  if (/\bdata (engineer|scientist|analyst)|\bdeveloper\b|lập trình viên/i.test(title) && !/devops|sre|site reliability/i.test(title)) return false;
+  // Infra, system and network roles stay even when titled "developer" ("Lập trình viên Infra-system-Network").
+  if (/\bdata (engineer|scientist|analyst)|\bdeveloper\b|lập trình viên/i.test(title) && !/devops|sre|site reliability|infra|system|network|hạ tầng|hệ thống|\bmạng\b/i.test(title)) return false;
   // Bridge engineers, interpreters and testers are other jobs that share words like "system engineer".
   if (/\bbrse\b|bridge (system )?(se|engineer)|kỹ sư cầu nối|comtor|biên phiên dịch|interpreter|\btester\b|\bqa\b|\bqc\b|quality (assurance|control)|kiểm thử/i.test(title) && !/devops|sre|site reliability/i.test(title)) return false;
   const t = title.toLowerCase();
@@ -241,7 +242,8 @@ export function isRelevantTitle(title: string, keywords: string[]): boolean {
 
 // HCMC or remote; postings only in other cities are dropped. A place naming no known city is kept.
 const HCMC = /h[oồ] ch[ií] minh|\bhcm\b|tp\.? ?hcm|sài gòn|saigon|thủ đức|thu duc/i;
-const OTHER_CITY = /hà nội|ha noi|hanoi|đà nẵng|da nang|danang|hải phòng|hai phong|cần thơ|can tho|nha trang|huế|bắc ninh|bac ninh/i;
+// Other Vietnamese cities, and offices abroad that sister sites list next to the HCMC ones ("Japan Office").
+const OTHER_CITY = /hà nội|ha noi|hanoi|đà nẵng|da nang|danang|hải phòng|hai phong|cần thơ|can tho|nha trang|huế|bắc ninh|bac ninh|japan office|văn phòng nhật bản|tokyo|osaka/i;
 
 export function isWantedLocation(location: string, workMode: WorkMode): boolean {
   if (workMode === "remote") return true;
