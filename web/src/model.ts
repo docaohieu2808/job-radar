@@ -130,12 +130,12 @@ export const LEVEL_LABEL: Record<string, string> = {
 
 export const ENGLISH_LABEL: Record<string, string> = { fluent: "Fluent English required", good: "Good English required", basic: "English mentioned" };
 
-const CAT_LABEL: Record<Category, string> = { salary: "Salary", stack: "Stack", level: "Level", english: "English", benefits: "Benefits", other: "Work mode", learned: "Your decisions" };
+const CAT_LABEL: Record<Category, string> = { salary: "Salary", stack: "Stack", level: "Level", english: "English", benefits: "Benefits", other: "Work mode", learned: "Your decisions", trust: "Trust" };
 
 // "Why this score": the starting point, then each category's weighted total with the reasons behind it.
 export function breakdown(p: PostingView, weights: Weights): { label: string; note: string; w: number }[] {
   const rows: { label: string; note: string; w: number }[] = [{ label: "Starting point", note: "every posting starts here", w: BASE_SCORE }];
-  const order: Category[] = ["stack", "salary", "level", "benefits", "english", "other", "learned"];
+  const order: Category[] = ["stack", "salary", "level", "benefits", "english", "other", "learned", "trust"];
   for (const cat of order) {
     const rs = p.reasons.filter((r) => r.cat === cat);
     if (!rs.length) continue;

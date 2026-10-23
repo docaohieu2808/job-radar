@@ -7,6 +7,7 @@ import { extractFacts, isRelevantTitle, isWantedLocation, type WorkMode } from "
 import type { Prefs } from "./prefs.js";
 import { scorePosting } from "./score.js";
 import { factsFeatures, learnedReasons, loadLearned } from "./learn.js";
+import { trustReasons } from "./trust.js";
 import { loadPrefs } from "./settings.js";
 import { normalizeKey } from "./normalize-key.js";
 import { ensureCompany, websiteFromEmails } from "./companies.js";
@@ -67,7 +68,12 @@ export async function savePosting(p: Posting): Promise<SaveResult> {
   }
 
   const learned = learnedReasons(await loadLearned(), factsFeatures(facts, p.companyName, p.source));
-  const { score, reasons } = scorePosting(facts, prefs.weights, learned);
+  // A new posting can only be flagged as second-hand here; age and the careers-page check come with rescoring.
+  const trust = trustReasons({
+    companyName: p.companyName, description: p.description, firstSeenAt: new Date(), reposted: false, now: new Date(),
+    sources: [p.source], companyListsJobs: false, siteMatch: null,
+  });
+  const { score, reasons } = scorePosting(facts, prefs.weights, [...learned, ...trust]);
   const emailSite = websiteFromEmails(p.companyName, p.description);
   const companyId = await ensureCompany(p.companyName, p.companyWebsite?.url ? p.companyWebsite : emailSite ? { url: emailSite, source: "contact email" } : null);
   const hash = contentHash(p.description);
@@ -178,10 +184,16 @@ export async function rescoreAll(): Promise<number> {
   const prefs = await loadPrefs();
   const { rows } = await pool.query<{
     id: number; title: string; description: string; stack: string[]; salary_min: string | null; salary_max: string | null; currency: string | null; location: string; urls: string;
-    company_name: string; source: string | null;
+    company_name: string; source: string | null; first_seen_at: Date; reposted: boolean; sources: string[];
+    lists_jobs: boolean; site_match: number | null;
   }>(`SELECT id, title, coalesce(description, '') AS description, stack, salary_min, salary_max, currency, coalesce(location, '') AS location,
              coalesce((SELECT string_agg(s.url, ' ') FROM job_sources s WHERE s.job_id = jobs.id), '') AS urls, company_name,
-             (SELECT s.source FROM job_sources s WHERE s.job_id = jobs.id ORDER BY s.id LIMIT 1) AS source FROM jobs`);
+             (SELECT s.source FROM job_sources s WHERE s.job_id = jobs.id ORDER BY s.id LIMIT 1) AS source,
+             first_seen_at, reposted_at IS NOT NULL AS reposted,
+             coalesce((SELECT array_agg(DISTINCT s.source) FROM job_sources s WHERE s.job_id = jobs.id), '{}') AS sources,
+             coalesce((SELECT bool_or(p.postings_found > 0 OR p.ats_kind IS NOT NULL) FROM career_pages p WHERE p.company_id = jobs.company_id AND p.status = 'found'), false) AS lists_jobs,
+             (SELECT c.site_match FROM companies c WHERE c.id = jobs.company_id) AS site_match
+        FROM jobs`);
   const model = await loadLearned();
   let dropped = 0;
   for (const r of rows) {
@@ -209,7 +221,11 @@ export async function rescoreAll(): Promise<number> {
         currency: r.currency === "USD" ? "USD" : "VND",
       };
     }
-    const { score, reasons } = scorePosting(facts, prefs.weights, learnedReasons(model, factsFeatures(facts, r.company_name, r.source)));
+    const trust = trustReasons({
+      companyName: r.company_name, description: r.description, firstSeenAt: r.first_seen_at, reposted: r.reposted, now: new Date(),
+      sources: r.sources, companyListsJobs: r.lists_jobs, siteMatch: r.site_match,
+    });
+    const { score, reasons } = scorePosting(facts, prefs.weights, [...learnedReasons(model, factsFeatures(facts, r.company_name, r.source)), ...trust]);
     await pool.query(
       `UPDATE jobs SET work_mode=$2, level=$3, years=$4, stack=$5, english_required=$6, cert_support=$7,
               raw_excerpts = raw_excerpts || $8::jsonb, score=$9, score_reasons=$10 WHERE id=$1`,

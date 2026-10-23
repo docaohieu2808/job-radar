@@ -8,6 +8,7 @@ import { closeStale } from "./store.js";
 import { recordDay } from "./soak.js";
 import { relearn } from "./learn.js";
 import { recomputeRelevance } from "./relevance.js";
+import { rescoreAll } from "./store.js";
 
 const HOUR_MS = 3600_000;
 
@@ -23,8 +24,10 @@ async function main(): Promise<void> {
   const hourly = () => {
     void closeStale().catch((err) => console.error("close stale failed", err));
     void recordDay().catch((err) => console.error("daily stats failed", err));
+    // Rescoring hourly keeps age-based trust flags ("Open 60 days") current.
     void relearn()
       .then(() => recomputeRelevance())
+      .then(() => rescoreAll())
       .catch((err) => console.error("relearn or relevance failed", err));
   };
   hourly();

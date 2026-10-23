@@ -70,6 +70,9 @@ export type CompanyView = {
   // Best-first frontier: how likely a DevOps opening is here, and why.
   relevance: number;
   relevanceReasons: string[];
+  // How sure the registry is that the website is this company's (0–100), and why.
+  siteMatch: number | null;
+  siteMatchReasons: string[];
 };
 
 // What the score has learned from the owner's triage so far.

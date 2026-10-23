@@ -83,8 +83,9 @@ export async function loadState(): Promise<StateView> {
   const { rows: registry } = await pool.query<{
     key: string | null; name: string; watch: boolean; website: string | null; website_source: string | null;
     career_status: string; career_checked_at: Date | null; career_url: string | null; career_kind: string | null;
-    relevance: number; relevance_reasons: string[];
+    relevance: number; relevance_reasons: string[]; site_match: number | null; site_match_reasons: string[];
   }>(`SELECT c.key, c.name, c.watch, c.website, c.website_source, c.career_status, c.career_checked_at, c.relevance, c.relevance_reasons,
+             c.site_match, c.site_match_reasons,
              p.url AS career_url, p.kind AS career_kind
         FROM companies c
         LEFT JOIN LATERAL (SELECT url, kind FROM career_pages WHERE company_id = c.id ORDER BY depth, id LIMIT 1) p ON true`);
@@ -96,6 +97,7 @@ export async function loadState(): Promise<StateView> {
       careerStatus: c?.career_status ?? "unknown", careerUrl: c?.career_url ?? null, careerKind: c?.career_kind ?? null,
       careerCheckedAt: c?.career_checked_at?.toISOString() ?? null,
       relevance: c?.relevance ?? 0, relevanceReasons: c?.relevance_reasons ?? [],
+      siteMatch: c?.site_match ?? null, siteMatchReasons: c?.site_match_reasons ?? [],
     };
   };
   const byKey = new Map<string, CompanyView>();

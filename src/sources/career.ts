@@ -16,6 +16,7 @@ import { HostRefusedError } from "../handlers/index.js";
 import { detectAts, listAtsJobs, type Ats } from "./ats.js";
 import { noteOutboundLinks } from "./discovery.js";
 import { readInterval } from "../relevance.js";
+import { postingConfidence, siteMatch } from "../trust.js";
 import { HOUR, type Source } from "./types.js";
 import type { Task } from "../queue.js";
 import type { HandlerResult } from "../handlers/index.js";
@@ -141,13 +142,8 @@ export function looksLikeJobLink(l: Link, keywords: string[]): boolean {
 }
 
 // A posting page carries at least two of the usual posting sections; a service page rarely does.
-const POSTING_MARKERS = [
-  /yêu cầu|requirements?|qualifications?/i, /quyền lợi|phúc lợi|benefits?|what we offer/i, /mô tả công việc|job description|responsibilities|trách nhiệm/i,
-  /ứng tuyển|nộp hồ sơ|apply now|apply for this|gửi cv|send (your )?cv/i, /kinh nghiệm|experience/i, /mức lương|salary|thu nhập/i,
-];
-
 export function looksLikePosting(text: string): boolean {
-  return POSTING_MARKERS.filter((m) => m.test(text)).length >= 2;
+  return postingConfidence(text) !== "no";
 }
 
 const CITY = /(h[oồ] ch[ií] minh|hcm|sài gòn|saigon|hà nội|ha noi|hanoi|đà nẵng|da nang|japan office|văn phòng nhật bản|tokyo|osaka)[^\n]{0,40}/i;
@@ -157,6 +153,17 @@ const urlId = (url: string) => createHash("sha1").update(url).digest("hex").slic
 async function company(id: number): Promise<{ id: number; name: string; watch: boolean; relevance: number } | null> {
   const { rows } = await pool.query<{ id: string; name: string; watch: boolean; relevance: number }>("SELECT id, name, watch, relevance FROM companies WHERE id = $1", [id]);
   return rows[0] ? { id: Number(rows[0].id), name: rows[0].name, watch: Boolean(rows[0].watch), relevance: rows[0].relevance } : null;
+}
+
+// Evidence that the site is this company's: name in the address, the source that gave it, the contact e-mail
+// domain in its postings, its name and tax code on the page (src/trust.ts).
+async function recordSiteMatch(companyId: number, name: string, website: string, html: string): Promise<void> {
+  const { rows } = await pool.query<{ website_source: string | null }>("SELECT website_source FROM companies WHERE id = $1", [companyId]);
+  const { rows: jobs } = await pool.query<{ description: string | null }>("SELECT description FROM jobs WHERE company_id = $1 LIMIT 20", [companyId]);
+  const emailDomains = jobs.flatMap((j) => [...(j.description ?? "").matchAll(/[\w.+-]+@([\w-]+(?:\.[\w-]+)+)/g)].map((m) => m[1].toLowerCase()));
+  const pageText = `${cheerio.load(html)("title").first().text()}\n${cheerio.load(html)("body").text()}`.slice(0, 200_000);
+  const m = siteMatch({ companyName: name, website, websiteSource: rows[0]?.website_source ?? null, pageText, emailDomains });
+  await pool.query("UPDATE companies SET site_match = $2, site_match_reasons = $3 WHERE id = $1", [companyId, m.score, JSON.stringify(m.reasons)]);
 }
 
 async function setCareerStatus(companyId: number, status: string): Promise<void> {
@@ -292,6 +299,7 @@ async function discover(task: Task): Promise<HandlerResult> {
   if (html === null) throw lastError;
   if (base !== task.url) await pool.query("UPDATE companies SET website = $2 WHERE id = $1", [c.id, new URL(base).origin]);
   const text = mainText(html);
+  await recordSiteMatch(c.id, c.name, base, html);
   if (needsBrowser(html, text)) {
     await setCareerStatus(c.id, "needs_browser");
     return { fetched, recrawlAfterSeconds: REDISCOVER_AFTER };
@@ -439,7 +447,16 @@ async function readCareerJob(task: Task): Promise<HandlerResult> {
   const prefs = await loadPrefs();
   const h1 = $("h1").first().text().replace(/\s+/g, " ").trim();
   const title = looksLikeJobTitle(h1, prefs.keywords) ? h1 : String(task.payload.title || h1 || $("title").text().trim());
-  if (!looksLikePosting(text)) {
+  // Three or more posting sections: a posting. Two: ask the LLM (when today's budget allows). Fewer: not a posting.
+  let confidence = postingConfidence(text);
+  if (confidence === "maybe") {
+    const v = await askJson<{ is_job_posting: boolean }>(
+      'Is this web page a single job posting (one open position someone can apply to)? Answer JSON {"is_job_posting":boolean}.',
+      `${title}\n\n${text.slice(0, 3000)}`,
+    );
+    if (v && !v.is_job_posting) confidence = "no";
+  }
+  if (confidence === "no") {
     await pool.query(
       `INSERT INTO rejected_postings (source, external_id, reason) VALUES ('career', $1, 'not a posting')
        ON CONFLICT (source, external_id) DO UPDATE SET reason = EXCLUDED.reason, rejected_at = now()`,
