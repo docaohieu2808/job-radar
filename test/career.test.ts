@@ -40,7 +40,7 @@ describe("career pages", () => {
   it("reads links and the main text, without menus", () => {
     const html = `<html><body><nav><a href="/about">About</a></nav><main><h1>Careers</h1>${"<p>We build things.</p>".repeat(40)}
       <a href="/jobs/devops-engineer#apply">DevOps Engineer</a><a href="mailto:hr@x.vn">Mail</a></main><footer>© X</footer></body></html>`;
-    expect(links(html, "https://x.vn/careers").map((l) => l.url)).toEqual(["https://x.vn/about", "https://x.vn/jobs/devops-engineer"]);
+    expect(links(html, "https://www.x.vn/careers").map((l) => l.url)).toEqual(["https://x.vn/about", "https://x.vn/jobs/devops-engineer"]);
     expect(mainText(html)).toContain("DevOps Engineer");
     expect(mainText(html)).not.toContain("©");
   });
@@ -62,6 +62,10 @@ describe("career pages", () => {
     expect(looksLikeJobTitle("Cloud & DevOps Services", kw)).toBe(false);
     expect(looksLikeJobTitle("Infrastructure Advisory", kw)).toBe(false);
     expect(looksLikeJobTitle("Hỗ trợ vận hành hệ thống CNTT", kw)).toBe(false);
+    expect(looksLikeJobTitle("DevOps & Platform Engineering", kw)).toBe(false);
+    const { looksLikeJobLink } = await import("../src/sources/career.js");
+    expect(looksLikeJobLink({ url: "https://awaydigitalteams.com/our-services/offshore-devops-engineers/", text: "DevOps engineer" }, kw)).toBe(false);
+    expect(looksLikeJobLink({ url: "https://gem-corp.tech/careers/middle-senior-devops-engineer/", text: "Middle/Senior DevOps Engineer" }, kw)).toBe(true);
     expect(looksLikePosting("Mô tả công việc ... Yêu cầu: 3 năm kinh nghiệm ... Quyền lợi")).toBe(true);
     expect(looksLikePosting("Our DevOps services help you scale. Contact us.")).toBe(false);
   });

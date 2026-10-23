@@ -67,6 +67,9 @@ export function links(html: string, base: string): Link[] {
     try {
       const u = new URL(href, base);
       u.hash = "";
+      // One page, one address: no www, no trailing slash.
+      u.hostname = u.hostname.replace(/^www\./, "");
+      if (u.pathname.length > 1) u.pathname = u.pathname.replace(/\/+$/, "");
       const text = $(el).text().replace(/\s+/g, " ").trim();
       const key = u.toString();
       if (!out.has(key) || (text && !out.get(key)!.text)) out.set(key, { url: key, text });
@@ -85,10 +88,17 @@ export function wantedCareerLocation(location: string): boolean {
 }
 
 // A job title names a role; service and product pages ("Cloud & DevOps Services", "Infrastructure Advisory") do not.
-const ROLE = /engineer|kỹ sư|ky su|specialist|chuyên viên|administrator|\badmin\b|\blead\b|manager|trưởng nhóm|trưởng phòng|architect|developer|\bsre\b|devops\b.*(engineer|lead)|intern|thực tập|nhân viên|consultant/i;
+const ROLE = /\bengineers?\b|kỹ sư|ky su|specialist|chuyên viên|administrator|\badmin\b|\blead\b|manager|trưởng nhóm|trưởng phòng|architect|developer|\bsre\b|devops\b.*\b(engineers?|lead)\b|intern|thực tập|nhân viên|consultant/i;
 
 export function looksLikeJobTitle(text: string, keywords: string[]): boolean {
   return text.length >= 5 && text.length <= 140 && ROLE.test(text) && isRelevantTitle(text, keywords);
+}
+
+// Marketing sections that talk about engineers without hiring one ("/our-services/offshore-devops-engineers").
+const NOT_A_JOB_PATH = /\/(our-)?(services?|solutions?|products?|industries|insights|blog|news|case-stud(y|ies)|dich-vu|giai-phap|san-pham)(\/|$)/i;
+
+export function looksLikeJobLink(l: Link, keywords: string[]): boolean {
+  return looksLikeJobTitle(l.text, keywords) && !NOT_A_JOB_PATH.test(new URL(l.url).pathname);
 }
 
 // A posting page carries at least two of the usual posting sections; a service page rarely does.
@@ -266,7 +276,7 @@ export const career: Source = {
       }
 
       const prefs = await loadPrefs();
-      const jobLinks = all.filter((l) => sameSite(l.url, task.url) && l.url !== task.url && looksLikeJobTitle(l.text, prefs.keywords));
+      const jobLinks = all.filter((l) => sameSite(l.url, task.url) && l.url !== task.url && looksLikeJobLink(l, prefs.keywords));
       const unknown = new Set(await markSeen("career", jobLinks.map((l) => urlId(l.url))));
       for (const l of jobLinks) {
         if (unknown.has(urlId(l.url))) await enqueue("career-job", l.url, { priority: 65, payload: { companyId: c.id, title: l.text } });
