@@ -2,6 +2,8 @@ import { describe, expect, it } from "vitest";
 import { detectCertSupport, detectEnglish, detectLevel, detectStack, detectWorkMode, isRelevantTitle, isWantedLocation, parseSalary } from "../src/extract.js";
 import { scorePosting } from "../src/score.js";
 import { extractFacts } from "../src/extract.js";
+import { DEFAULT_PREFS } from "../src/prefs.js";
+const KW = DEFAULT_PREFS.keywords;
 
 describe("parseSalary", () => {
   it.each([
@@ -46,13 +48,18 @@ describe("facts", () => {
   });
 
   it("keeps DevOps-family titles in HCMC or remote", () => {
-    expect(isRelevantTitle("Cloud Native DevOps Engineer")).toBe(true);
-    expect(isRelevantTitle("Kỹ Sư Phát Triển Và Vận Hành DevOps")).toBe(true);
-    expect(isRelevantTitle("Transportation Operation Executive")).toBe(false);
-    expect(isRelevantTitle("DATA ENGINEER / DATA PLATFORM ENGINEER")).toBe(false);
+    expect(isRelevantTitle("Cloud Native DevOps Engineer", KW)).toBe(true);
+    expect(isRelevantTitle("Kỹ Sư Phát Triển Và Vận Hành DevOps", KW)).toBe(true);
+    expect(isRelevantTitle("Transportation Operation Executive", KW)).toBe(false);
+    expect(isRelevantTitle("DATA ENGINEER / DATA PLATFORM ENGINEER", KW)).toBe(false);
+    expect(isRelevantTitle("Senior SRE", KW)).toBe(true);
+    expect(isRelevantTitle("Presales Engineer", KW)).toBe(false);
     expect(isWantedLocation("Quận 7, Ho Chi Minh City, Vietnam", "onsite")).toBe(true);
     expect(isWantedLocation("Cầu Giấy, Hà Nội", "onsite")).toBe(false);
     expect(isWantedLocation("Hà Nội", "remote")).toBe(true);
+    expect(isWantedLocation("Tòa nhà Bưu Điện, Cầu Giấy, HN, Hà Nội, Việt Nam", "unknown")).toBe(false);
+    expect(isWantedLocation("Ha Noi – Ho Chi Minh", "onsite")).toBe(true);
+    expect(isWantedLocation("Vietnam", "unknown")).toBe(true);
   });
 });
 

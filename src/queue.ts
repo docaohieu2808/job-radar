@@ -59,10 +59,10 @@ export async function claim(): Promise<Task | null> {
 // Finished: either done for good, or scheduled again (recurring pages such as search results).
 export async function complete(taskId: number, recrawlAfterSeconds?: number): Promise<void> {
   if (recrawlAfterSeconds === undefined) {
-    await pool.query("UPDATE crawl_queue SET locked_at = NULL, done_at = now(), last_error = NULL WHERE id = $1", [taskId]);
+    await pool.query("UPDATE crawl_queue SET locked_at = NULL, done_at = now(), last_error = NULL, last_run_at = now() WHERE id = $1", [taskId]);
   } else {
     await pool.query(
-      `UPDATE crawl_queue SET locked_at = NULL, attempts = 0, last_error = NULL,
+      `UPDATE crawl_queue SET locked_at = NULL, attempts = 0, last_error = NULL, last_run_at = now(),
               next_fetch_at = now() + make_interval(secs => $2) WHERE id = $1`,
       [taskId, recrawlAfterSeconds],
     );
@@ -76,11 +76,11 @@ export function backoffSeconds(attempts: number): number {
 
 export async function fail(task: Task, error: string, maxAttempts = 5): Promise<"retry" | "dead"> {
   if (task.attempts >= maxAttempts) {
-    await pool.query("UPDATE crawl_queue SET locked_at = NULL, done_at = now(), last_error = $2 WHERE id = $1", [task.id, error]);
+    await pool.query("UPDATE crawl_queue SET locked_at = NULL, done_at = now(), last_error = $2, last_run_at = now() WHERE id = $1", [task.id, error]);
     return "dead";
   }
   await pool.query(
-    `UPDATE crawl_queue SET locked_at = NULL, last_error = $2,
+    `UPDATE crawl_queue SET locked_at = NULL, last_error = $2, last_run_at = now(),
             next_fetch_at = now() + make_interval(secs => $3) WHERE id = $1`,
     [task.id, error, backoffSeconds(task.attempts)],
   );

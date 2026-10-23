@@ -6,6 +6,7 @@ COPY tsconfig.json vitest.config.ts ./
 COPY src ./src
 COPY test ./test
 COPY migrations ./migrations
+COPY web ./web
 RUN npm run build
 
 FROM node:26-alpine
@@ -14,6 +15,7 @@ ENV NODE_ENV=production
 COPY package.json package-lock.json ./
 RUN npm ci --omit=dev && npm cache clean --force
 COPY --from=build /app/dist ./dist
+COPY --from=build /app/web/dist ./web/dist
 COPY migrations ./migrations
 USER node
 CMD ["node", "dist/src/main.js"]

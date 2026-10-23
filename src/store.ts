@@ -3,8 +3,13 @@
 // Content Seen? = hash of the normalized description; an unchanged posting is only touched, not re-extracted.
 import { createHash } from "node:crypto";
 import { pool, withTransaction } from "./db.js";
-import { extractFacts, isRelevantTitle, isWantedLocation } from "./extract.js";
+import { extractFacts, isRelevantTitle, isWantedLocation, type WorkMode } from "./extract.js";
+import type { Prefs } from "./prefs.js";
 import { scorePosting } from "./score.js";
+import { loadPrefs } from "./settings.js";
+import { normalizeKey } from "./normalize-key.js";
+
+export { normalizeKey };
 
 export type Posting = {
   source: string;
@@ -22,17 +27,6 @@ export type Posting = {
 
 export type SaveResult = { status: "skipped" | "new" | "reposted" | "updated" | "unchanged"; jobId?: number; score?: number };
 
-export function normalizeKey(s: string): string {
-  return s
-    .toLowerCase()
-    .normalize("NFD")
-    .replace(/[̀-ͯ]/g, "")
-    .replace(/đ/g, "d")
-    .replace(/\b(cong ty|company|co\.?,? ?ltd|jsc|tnhh|co phan|corporation|corp|vietnam|viet nam|inc)\b/g, " ")
-    .replace(/[^a-z0-9]+/g, " ")
-    .trim();
-}
-
 export function dedupeKey(companyName: string, title: string): string {
   return `${normalizeKey(companyName)}|${normalizeKey(title)}`;
 }
@@ -41,11 +35,32 @@ export function contentHash(text: string): string {
   return createHash("sha256").update(normalizeKey(text)).digest("hex");
 }
 
-export async function savePosting(p: Posting): Promise<SaveResult> {
-  const facts = extractFacts({ title: p.title, text: p.description, tags: p.tags, salaryText: p.salaryText });
-  if (!isRelevantTitle(p.title) || !isWantedLocation(p.location, facts.workMode)) return { status: "skipped" };
+// Why a posting is not kept under the current preferences, or null when it is.
+function rejection(title: string, location: string, workMode: WorkMode, prefs: Prefs): string | null {
+  if (!isRelevantTitle(title, prefs.keywords)) return "title";
+  if (!isWantedLocation(location, workMode)) return "place";
+  if (workMode !== "unknown" && !prefs.modes[workMode]) return "work mode";
+  return null;
+}
 
-  const { score, reasons } = scorePosting(facts);
+async function reject(source: string, externalId: string, reason: string): Promise<void> {
+  await pool.query(
+    `INSERT INTO rejected_postings (source, external_id, reason) VALUES ($1, $2, $3)
+     ON CONFLICT (source, external_id) DO UPDATE SET reason = EXCLUDED.reason, rejected_at = now()`,
+    [source, externalId, reason],
+  );
+}
+
+export async function savePosting(p: Posting): Promise<SaveResult> {
+  const prefs = await loadPrefs();
+  const facts = extractFacts({ title: p.title, text: p.description, tags: p.tags, salaryText: p.salaryText });
+  const rejected = rejection(p.title, p.location, facts.workMode, prefs);
+  if (rejected) {
+    await reject(p.source, p.externalId, rejected);
+    return { status: "skipped" };
+  }
+
+  const { score, reasons } = scorePosting(facts, prefs.weights);
   const hash = contentHash(p.description);
   const key = dedupeKey(p.companyName, p.title);
   const fields = [
@@ -128,9 +143,12 @@ export async function markSeen(source: string, externalIds: string[]): Promise<s
        UPDATE job_sources SET last_seen_at = now(), missing_runs = 0
         WHERE source = $1 AND external_id = ANY($2) RETURNING job_id, external_id)
      , touched AS (UPDATE jobs SET last_seen_at = now() WHERE id IN (SELECT job_id FROM seen) RETURNING id)
-     SELECT external_id FROM seen`,
+     SELECT external_id FROM seen
+     UNION SELECT external_id FROM rejected_postings
+      WHERE source = $1 AND external_id = ANY($2) AND rejected_at > now() - interval '30 days'`,
     [source, externalIds],
   );
+  // Known = stored, or read and rejected within the last month (preferences may change after that).
   const known = new Set(rows.map((r) => r.external_id));
   return externalIds.filter((id) => !known.has(id));
 }
@@ -147,11 +165,28 @@ export async function closeStale(days = 7): Promise<number> {
 // Re-runs extraction and scoring on stored postings, after the rules change. Tags are not stored, so the
 // detected stack is passed back in as tags to keep skills that only appeared there.
 export async function rescoreAll(): Promise<number> {
+  const prefs = await loadPrefs();
   const { rows } = await pool.query<{
-    id: number; title: string; description: string; stack: string[]; salary_min: string | null; salary_max: string | null; currency: string | null;
-  }>("SELECT id, title, coalesce(description, '') AS description, stack, salary_min, salary_max, currency FROM jobs");
+    id: number; title: string; description: string; stack: string[]; salary_min: string | null; salary_max: string | null; currency: string | null; location: string;
+  }>("SELECT id, title, coalesce(description, '') AS description, stack, salary_min, salary_max, currency, coalesce(location, '') AS location FROM jobs");
+  let dropped = 0;
   for (const r of rows) {
     const facts = extractFacts({ title: r.title, text: r.description, tags: r.stack });
+    // Untriaged postings that the current keywords, places or work modes would not keep are removed;
+    // anything the owner already acted on stays.
+    const rejected = rejection(r.title, r.location, facts.workMode, prefs);
+    if (rejected) {
+      const { rows: gone } = await pool.query<{ source: string; external_id: string }>(
+        `WITH del AS (DELETE FROM jobs j USING applications a WHERE a.job_id = j.id AND j.id = $1 AND a.status = 'new' RETURNING j.id)
+         SELECT s.source, s.external_id FROM job_sources s WHERE s.job_id IN (SELECT id FROM del)`,
+        [r.id],
+      );
+      if (gone.length) {
+        for (const g of gone) await reject(g.source, g.external_id, rejected);
+        dropped++;
+        continue;
+      }
+    }
     // A salary that came from the source's own salary field is not in the description; keep the stored one.
     if (!facts.salary && (r.salary_min !== null || r.salary_max !== null)) {
       facts.salary = {
@@ -160,7 +195,7 @@ export async function rescoreAll(): Promise<number> {
         currency: r.currency === "USD" ? "USD" : "VND",
       };
     }
-    const { score, reasons } = scorePosting(facts);
+    const { score, reasons } = scorePosting(facts, prefs.weights);
     await pool.query(
       `UPDATE jobs SET work_mode=$2, level=$3, years=$4, stack=$5, english_required=$6, cert_support=$7,
               raw_excerpts = raw_excerpts || $8::jsonb, score=$9, score_reasons=$10 WHERE id=$1`,
@@ -168,5 +203,5 @@ export async function rescoreAll(): Promise<number> {
         JSON.stringify(facts.excerpts), score, JSON.stringify(reasons)],
     );
   }
-  return rows.length;
+  return rows.length - dropped;
 }

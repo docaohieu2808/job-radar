@@ -83,7 +83,7 @@ function sentenceAround(text: string, index: number): string {
   const start = Math.max(text.lastIndexOf("\n", index), text.lastIndexOf(". ", index), 0);
   const endNl = text.indexOf("\n", index);
   const end = endNl === -1 ? Math.min(text.length, index + 200) : Math.min(endNl, index + 200);
-  return text.slice(start, end).replace(/^[\n. ]+/, "").trim().slice(0, 240);
+  return text.slice(start, end).replace(/^[\n. ]+/, "").replace(/^[-•*]\s*/, "").trim().slice(0, 240);
 }
 
 function firstMatch(text: string, pattern: RegExp): { match: RegExpExecArray; excerpt: string } | null {
@@ -189,17 +189,27 @@ export function isVietnameseText(text: string): boolean {
   return marks > Math.max(20, text.length * 0.02);
 }
 
-// Keeps DevOps-family postings; everything else on a broad keyword search is noise.
-export function isRelevantTitle(title: string): boolean {
+// Keeps postings whose title contains one of the owner's keywords. Data and developer roles are noise on a broad
+// search even when their title mentions a platform or the cloud, unless they are explicitly DevOps or SRE.
+export function isRelevantTitle(title: string, keywords: string[]): boolean {
   if (/\bdata (engineer|scientist|analyst)|\bdeveloper\b|lập trình viên/i.test(title) && !/devops|sre|site reliability/i.test(title)) return false;
-  return /devops|devsecops|mlops|\bsre\b|site reliability|platform engineer|cloud (engineer|devops|platform|infrastructure)|infrastructure|hạ tầng|vận hành|system engineer|kỹ sư hệ thống|system admin/i.test(title);
+  const t = title.toLowerCase();
+  return keywords.some((k) => {
+    const word = k.trim().toLowerCase();
+    if (!word) return false;
+    // Short acronyms must stand alone ("SRE" is not "pSREdict").
+    return word.length <= 4 ? new RegExp(`\\b${word.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\b`, "i").test(t) : t.includes(word);
+  });
 }
 
-// HCMC or remote; postings only in other cities are dropped.
+// HCMC or remote; postings only in other cities are dropped. A place naming no known city is kept.
+const HCMC = /h[oồ] ch[ií] minh|\bhcm\b|tp\.? ?hcm|sài gòn|saigon|thủ đức|thu duc/i;
+const OTHER_CITY = /hà nội|ha noi|hanoi|đà nẵng|da nang|danang|hải phòng|hai phong|cần thơ|can tho|nha trang|huế|bắc ninh|bac ninh/i;
+
 export function isWantedLocation(location: string, workMode: WorkMode): boolean {
   if (workMode === "remote") return true;
-  if (!location.trim()) return true;
-  return /h[oồ] ch[ií] minh|hcm|sài gòn|saigon|tp\.? ?hcm|thủ đức|quận|district|remote|việt nam$|vietnam$/i.test(location);
+  if (HCMC.test(location)) return true;
+  return !OTHER_CITY.test(location);
 }
 
 export function extractFacts(input: { title: string; text: string; tags?: string[]; salaryText?: string }): Facts {

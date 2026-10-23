@@ -3,3 +3,5 @@ dist
 .env
 .git
 spike
+web/dist
+design

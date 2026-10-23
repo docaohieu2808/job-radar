@@ -1,0 +1,1030 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+/* Contrast, measured (WCAG 2.1):
+   Light — ink #16161a on sheet #fff 17.9:1 · ink2 #45454c 9.6:1 · ink3 #64646c 5.9:1 (5.4:1 on sunk #f5f5f4)
+           accent text #b04a00 on #fff 5.5:1 · control border #8f8f97 3.2:1 · focus ring rgb(176 74 0/.7) on #fff 3.1:1
+           (ring opacity raised from .55 to .70: at .55 no orange reaches 3:1 on white)
+           primary button #fff on #16161a 17.9:1 · warn #8a5600 on #faf1df 5.6:1 · ok #1d7148 on #e9f4ee 5.6:1 · bad #b42318 on #fdefed 5.8:1
+   Dark  — ink #ececef on sheet #19191c 15.2:1 · ink2 #b6b6bf 9.1:1 · ink3 #8e8e98 5.4:1
+           accent text #ff9d52 8.8:1 · control border #6e6e78 3.4:1 · ring rgb(255 157 82/.7) 5.0:1
+   Hairline dividers (#e8e8ea / #29292e) are decorative grouping, not controls. */
+:root,[data-theme="light"]{color-scheme:light;--canvas:#ebebea;--wash:#f8f8f7;--sheet:#ffffff;--raised:#ffffff;--sunk:#f5f5f4;--hover:#f4f4f3;--navh:rgb(0 0 0 / .045);--navsel:#ffffff;--ink:#16161a;--ink2:#45454c;--ink3:#64646c;--line:#e8e8ea;--line2:#d6d6da;--ctl:#8f8f97;--accent:#f38020;--acc-ink:#b04a00;--acc-tint:#fdf1e6;--ring:rgb(176 74 0 / .7);--btn:#16161a;--btn-h:#303036;--btn-ink:#ffffff;--scrim:rgb(22 22 26 / .28);--ok:#1d7148;--ok-bg:#e9f4ee;--warn:#8a5600;--warn-bg:#faf1df;--bad:#b42318;--bad-bg:#fdefed;--info:#2e5c99;--info-bg:#ebf1f9;--c1:#4d6a8c;--c2:#cdd1d8;--c3:#a7845a;--t1:#e6e2ef;--t1i:#4a3f6a;--t2:#dfebe8;--t2i:#2c5a50;--t3:#eee5da;--t3i:#6a4827;--t4:#e1e7f0;--t4i:#32496e;--t5:#ede2e5;--t5i:#6a3946;--t6:#e5e8dc;--t6i:#485430;--sh1:1px 1px 2px rgb(0 0 0 / .06),4px 8px 24px -8px rgb(0 0 0 / .10);--sh15:1px 1px 3px rgb(0 0 0 / .06),6px 12px 28px -10px rgb(0 0 0 / .13);--sh2:1px 2px 4px rgb(0 0 0 / .07),8px 16px 32px -12px rgb(0 0 0 / .16);--sh3:2px 4px 8px rgb(0 0 0 / .08),16px 32px 64px -16px rgb(0 0 0 / .24)}
+[data-theme="dark"]{color-scheme:dark;--canvas:#0e0e10;--wash:#18181b;--sheet:#19191c;--raised:#232327;--sunk:#151518;--hover:#202024;--navh:rgb(255 255 255 / .05);--navsel:#1f1f23;--ink:#ececef;--ink2:#b6b6bf;--ink3:#8e8e98;--line:#29292e;--line2:#36363c;--ctl:#6e6e78;--accent:#f6913a;--acc-ink:#ff9d52;--acc-tint:#2a1d12;--ring:rgb(255 157 82 / .7);--btn:#ececef;--btn-h:#d2d2d8;--btn-ink:#16161a;--scrim:rgb(0 0 0 / .5);--ok:#62c393;--ok-bg:#132a1f;--warn:#e2b45e;--warn-bg:#2b2313;--bad:#f2806f;--bad-bg:#2e1715;--info:#86abe2;--info-bg:#152238;--c1:#7d9cc2;--c2:#3a3d44;--c3:#c4a173;--t1:#2b2738;--t1i:#c7bce8;--t2:#1f2f2c;--t2i:#9fd1c4;--t3:#33291f;--t3i:#e0c19e;--t4:#1f2838;--t4i:#a9c0e6;--t5:#33242a;--t5i:#e3b5c1;--t6:#272c1f;--t6i:#c4d0a4;--sh1:0 1px 2px rgb(0 0 0 / .5),2px 4px 12px -4px rgb(0 0 0 / .45);--sh15:0 1px 2px rgb(0 0 0 / .55),3px 6px 14px -6px rgb(0 0 0 / .55);--sh2:1px 2px 3px rgb(0 0 0 / .55),4px 8px 18px -8px rgb(0 0 0 / .6);--sh3:1px 3px 6px rgb(0 0 0 / .6),8px 16px 36px -12px rgb(0 0 0 / .7)}
+html,body{margin:0;height:100%;background:#ebebea}
+body{font-family:Inter,system-ui,sans-serif;font-size:14px;font-variant-numeric:tabular-nums;-webkit-font-smoothing:antialiased}
+button,input,textarea,select{font:inherit;color:inherit}
+a{color:var(--acc-ink);text-decoration:none}
+a:hover{text-decoration:underline;text-underline-offset:2px}
+:focus-visible{outline:2px solid var(--ring);outline-offset:2px}
+:focus:not(:focus-visible){outline:none}
+::placeholder{color:var(--ink3);opacity:1}
+@keyframes jr-in{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+@keyframes jr-pop{from{opacity:0;transform:scale(.96)}to{opacity:1;transform:none}}
+@keyframes jr-fade{from{opacity:0}to{opacity:1}}
+@keyframes jr-spin{to{transform:rotate(360deg)}}
+@keyframes jr-pulse{0%,100%{opacity:1}50%{opacity:.55}}
+@media (prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:0s!important;transition-duration:0s!important}}
+</style>
+</helmet>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+<defs>
+<symbol id="i-logo" viewBox="0 0 32 32"><rect width="32" height="32" rx="10" style="fill:var(--btn)"></rect><circle cx="16" cy="16" r="10" fill="none" stroke-width="1.5" style="stroke:var(--btn-ink);stroke-opacity:.35"></circle><circle cx="16" cy="16" r="5.5" fill="none" stroke-width="1.5" style="stroke:var(--btn-ink);stroke-opacity:.6"></circle><path d="M16 16L23.1 8.9" stroke-width="1.5" stroke-linecap="round" style="stroke:var(--btn-ink)"></path><circle cx="16" cy="16" r="1.5" style="fill:var(--btn-ink)"></circle><circle cx="21.5" cy="10.5" r="2.25" style="fill:var(--accent)"></circle></symbol>
+<symbol id="i-inbox" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M2 9h3.5l1 2h3l1-2H14"></path><path d="M2 9l1.7-5.1A1.3 1.3 0 0 1 4.9 3h6.2a1.3 1.3 0 0 1 1.2.9L14 9v3a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1z"></path></symbol>
+<symbol id="i-list" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M6 4h8M6 8h8M6 12h8M2.5 4h.01M2.5 8h.01M2.5 12h.01"></path></symbol>
+<symbol id="i-pipe" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"><rect x="2" y="2.5" width="3" height="11" rx="1"></rect><rect x="6.5" y="2.5" width="3" height="7" rx="1"></rect><rect x="11" y="2.5" width="3" height="4.5" rx="1"></rect></symbol>
+<symbol id="i-co" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 14V3h6.5v11M9.5 6.5H13V14M2 14h12M5.5 5.5h1.5M5.5 8h1.5M5.5 10.5h1.5"></path></symbol>
+<symbol id="i-chart" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M2.5 2.5v11h11M5.5 10l2.5-3 2 2 3.5-4.5"></path></symbol>
+<symbol id="i-src" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="8" cy="8" r="1.5"></circle><path d="M5 11a4.2 4.2 0 0 1 0-6M11 5a4.2 4.2 0 0 1 0 6M3 13a7 7 0 0 1 0-10M13 3a7 7 0 0 1 0 10"></path></symbol>
+<symbol id="i-set" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M2 4h7M12 4h2M2 8h2M7 8h7M2 12h8M13 12h1"></path><circle cx="10.5" cy="4" r="1.5"></circle><circle cx="5.5" cy="8" r="1.5"></circle><circle cx="11.5" cy="12" r="1.5"></circle></symbol>
+<symbol id="i-search" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="7" cy="7" r="4.5"></circle><path d="M10.5 10.5L14 14"></path></symbol>
+<symbol id="i-check" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8.5l3 3 7-7"></path></symbol>
+<symbol id="i-x" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M4 4l8 8M12 4l-8 8"></path></symbol>
+<symbol id="i-mark" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"><path d="M4 2.5h8v11l-4-3-4 3z"></path></symbol>
+<symbol id="i-send" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round"><path d="M14 2L7 9M14 2l-4.5 12L7 9 2 6.5z"></path></symbol>
+<symbol id="i-ext" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9.5 2.5h4v4M13.5 2.5L8 8M12 9.5v4H2.5V4h4"></path></symbol>
+<symbol id="i-back" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M13 8H3M7 4L3 8l4 4"></path></symbol>
+<symbol id="i-chev" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3.5L10.5 8 6 12.5"></path></symbol>
+<symbol id="i-down" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6l4 4 4-4"></path></symbol>
+<symbol id="i-moon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"><path d="M13.5 9.5A5.5 5.5 0 0 1 6.5 2.5a5.5 5.5 0 1 0 7 7z"></path></symbol>
+<symbol id="i-out" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M10 2.5h3v11h-3M7 5L4 8l3 3M4 8h7.5"></path></symbol>
+<symbol id="i-plus" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M8 3v10M3 8h10"></path></symbol>
+<symbol id="i-cash" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"><rect x="1.5" y="4" width="13" height="8" rx="1.5"></rect><circle cx="8" cy="8" r="1.8"></circle></symbol>
+<symbol id="i-level" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"><rect x="2" y="5" width="12" height="8.5" rx="1.5"></rect><path d="M6 5V3.5h4V5"></path></symbol>
+<symbol id="i-pin" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"><path d="M8 14.5s4.5-4 4.5-8a4.5 4.5 0 0 0-9 0c0 4 4.5 8 4.5 8z"></path><circle cx="8" cy="6.5" r="1.5"></circle></symbol>
+<symbol id="i-globe" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="8" cy="8" r="6"></circle><path d="M2 8h12M8 2c2.2 2.2 2.2 9.8 0 12M8 2c-2.2 2.2-2.2 9.8 0 12"></path></symbol>
+<symbol id="i-award" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"><circle cx="8" cy="6" r="3.5"></circle><path d="M5.8 8.8L5 14l3-1.5 3 1.5-.8-5.2"></path></symbol>
+<symbol id="i-alert" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="8" cy="8" r="6"></circle><path d="M8 5v3.5M8 11h.01"></path></symbol>
+<symbol id="i-undo" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 3L2 6l3 3M2 6h7.5a4 4 0 0 1 0 8H7"></path></symbol>
+<symbol id="i-grip" viewBox="0 0 16 16" fill="currentColor"><circle cx="6" cy="4" r="1"></circle><circle cx="10" cy="4" r="1"></circle><circle cx="6" cy="8" r="1"></circle><circle cx="10" cy="8" r="1"></circle><circle cx="6" cy="12" r="1"></circle><circle cx="10" cy="12" r="1"></circle></symbol>
+<symbol id="i-star" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"><path d="M8 2l1.8 3.8 4.2.5-3.1 2.9.8 4.1L8 11.3l-3.7 2 .8-4.1L2 6.3l4.2-.5z"></path></symbol>
+<symbol id="i-starf" viewBox="0 0 16 16" fill="currentColor" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"><path d="M8 2l1.8 3.8 4.2.5-3.1 2.9.8 4.1L8 11.3l-3.7 2 .8-4.1L2 6.3l4.2-.5z"></path></symbol>
+<symbol id="i-cmd" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"><path d="M6 6V4.5A1.5 1.5 0 1 0 4.5 6H6zm0 0h4M6 6v4m4-4V4.5A1.5 1.5 0 1 1 11.5 6H10zm0 0v4m0 0h1.5a1.5 1.5 0 1 1-1.5 1.5V10zm0 0H6m0 0v1.5A1.5 1.5 0 1 1 4.5 10H6z"></path></symbol>
+</defs>
+</svg>
+
+<div data-theme="{{ theme }}" style="height:100vh;min-height:640px;min-width:0;display:flex;font-family:Inter,system-ui,sans-serif;font-size:14px;color:var(--ink);background:radial-gradient(1400px 900px at 0% 0%, var(--wash), transparent 62%), var(--canvas);overflow:hidden;position:relative">
+
+<sc-if value="{{ isSignin }}" hint-placeholder-val="{{ false }}">
+<div data-screen-label="01 Sign in" style="flex:1;display:flex;align-items:center;justify-content:center;padding:32px">
+  <div style="display:flex;flex-direction:column;align-items:center;gap:24px">
+  <form onSubmit="{{ signIn }}" style="width:360px;box-sizing:border-box;background:var(--sheet);border-radius:16px;box-shadow:var(--sh1);padding:32px;display:flex;flex-direction:column;gap:24px">
+    <div style="display:flex;align-items:center;gap:12px">
+      <svg width="40" height="40" style="flex:none;border-radius:10px;box-shadow:var(--sh1)"><use href="#i-logo"></use></svg>
+      <div style="display:flex;flex-direction:column;gap:2px">
+        <div style="font-size:20px;font-weight:600;letter-spacing:-0.01em;line-height:24px;color:var(--ink)">Job Radar</div>
+        <div style="font-size:13px;color:var(--ink3)">Private workspace</div>
+      </div>
+    </div>
+    <label style="display:flex;flex-direction:column;gap:8px">
+      <span style="font-size:13px;font-weight:500;color:var(--ink2)">Password</span>
+      <input type="password" autofocus="{{ true }}" value="{{ pw }}" onChange="{{ setPw }}" disabled="{{ pwLoad }}" aria-invalid="{{ pwErr }}" style="height:36px;box-sizing:border-box;padding:0 12px;border-radius:10px;border:1px solid {{ pwBorder }};background:{{ pwBg }};font-size:14px;color:var(--ink);transition:border-color 150ms ease-out">
+      <sc-if value="{{ pwErr }}"><span style="font-size:12px;color:var(--bad)">Incorrect password. Try again.</span></sc-if>
+    </label>
+    <button type="submit" disabled="{{ pwLoad }}" style="height:36px;border:0;border-radius:10px;background:var(--btn);color:var(--btn-ink);font-size:14px;font-weight:500;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;transition:background 150ms ease-out, transform 100ms ease-out" style-hover="background:var(--btn-h)" style-active="transform:scale(.98)">
+      <sc-if value="{{ pwLoad }}"><span style="width:14px;height:14px;border-radius:9999px;border:2px solid currentColor;border-right-color:transparent;box-sizing:border-box;animation:jr-spin 700ms linear infinite"></span></sc-if>
+      <span>{{ signLabel }}</span>
+    </button>
+    <div style="font-size:12px;color:var(--ink3)">Demo password: radar</div>
+  </form>
+  <p style="margin:0;max-width:340px;text-align:center;font-size:13px;line-height:20px;color:var(--ink3);text-wrap:pretty">DevOps postings in Ho Chi Minh City from ITviec, TopCV, TopDev, VietnamWorks and company career pages, checked daily and scored for fit.</p>
+  </div>
+</div>
+</sc-if>
+
+<sc-if value="{{ isApp }}" hint-placeholder-val="{{ true }}">
+<aside style="width:{{ sideW }};flex:none;display:flex;flex-direction:column;padding:0 12px 16px;box-sizing:border-box;transition:width 0ms">
+  <div style="height:48px;display:flex;align-items:center;gap:8px;padding:0 4px;font-size:16px;font-weight:600;letter-spacing:-0.01em;color:var(--ink);white-space:nowrap;overflow:hidden"><svg width="24" height="24" style="flex:none"><use href="#i-logo"></use></svg><span style="display:{{ labelDisp }}">Job Radar</span></div>
+  <nav style="display:flex;flex-direction:column;gap:2px;margin-top:4px">
+    <sc-for list="{{ nav }}" as="n" hint-placeholder-count="7">
+      <a href="{{ n.href }}" aria-current="{{ n.current }}" title="{{ n.label }}" style="position:relative;height:28px;display:flex;align-items:center;gap:8px;padding:0 8px;border-radius:6px;font-size:13px;font-weight:500;color:{{ n.color }};background:{{ n.bg }};box-shadow:{{ n.shadow }};text-decoration:none;transition:background 150ms ease-out, color 150ms ease-out" style-hover="background:var(--navh);color:var(--ink);text-decoration:none">
+        <span style="position:absolute;left:-12px;top:6px;bottom:6px;width:2px;border-radius:9999px;background:var(--accent);opacity:{{ n.bar }}"></span>
+        <svg width="16" height="16" style="color:{{ n.icon }};flex:none"><use href="{{ n.sym }}"></use></svg>
+        <span style="flex:1;display:{{ labelDisp }};white-space:nowrap">{{ n.label }}</span>
+        <sc-if value="{{ n.showCount }}"><span style="min-width:20px;height:18px;padding:0 6px;box-sizing:border-box;border-radius:9999px;background:var(--sheet);box-shadow:inset 0 0 0 1px var(--line);font-size:11px;font-weight:600;color:var(--ink);display:inline-flex;align-items:center;justify-content:center">{{ n.count }}</span></sc-if>
+      </a>
+    </sc-for>
+  </nav>
+  <div style="flex:1"></div>
+  <div style="display:flex;flex-direction:column;gap:12px;padding:0 8px">
+    <a href="#/sources" style="display:{{ footDisp }};flex-direction:column;gap:4px;text-decoration:none">
+      <span style="font-size:12px;color:var(--ink3)">Last checked 06:12</span>
+      <span style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--warn)"><span style="width:6px;height:6px;border-radius:9999px;background:var(--warn)"></span>TopDev degraded</span>
+    </a>
+    <div style="display:flex;flex-direction:{{ footDir }};gap:4px;margin:0 -8px">
+      <button onClick="{{ toggleTheme }}" title="{{ themeLabel }}" style="height:32px;padding:0 8px;border:0;border-radius:10px;background:transparent;color:var(--ink2);font-size:13px;display:flex;align-items:center;gap:8px;cursor:pointer;white-space:nowrap;transition:background 150ms ease-out" style-hover="background:var(--navh)" style-active="transform:scale(.98)"><svg width="16" height="16" style="flex:none"><use href="#i-moon"></use></svg><span style="display:{{ labelDisp }}">{{ themeLabel }}</span></button>
+      <a href="#/signin" title="Sign out" style="height:32px;padding:0 8px;border-radius:10px;color:var(--ink2);font-size:13px;display:flex;align-items:center;gap:8px;white-space:nowrap;text-decoration:none" style-hover="background:var(--navh);text-decoration:none"><svg width="16" height="16" style="flex:none"><use href="#i-out"></use></svg><span style="display:{{ labelDisp }}">Sign out</span></a>
+    </div>
+  </div>
+</aside>
+
+<div style="flex:1;min-width:0;display:flex;flex-direction:column">
+  <header style="height:48px;flex:none;display:flex;align-items:center;gap:16px;padding-right:24px;min-width:0">
+    <sc-if value="{{ hasBack }}">
+      <a href="{{ backHref }}" style="display:flex;align-items:center;gap:6px;font-size:13px;font-weight:500;color:var(--ink2);text-decoration:none" style-hover="color:var(--ink);text-decoration:none"><svg width="16" height="16"><use href="#i-back"></use></svg>{{ backLabel }}</a>
+    </sc-if>
+    <button onClick="{{ openSearch }}" style="width:320px;min-width:0;flex:0 1 320px;overflow:hidden;white-space:nowrap;height:32px;display:flex;align-items:center;gap:8px;padding:0 6px 0 10px;border-radius:10px;border:1px solid var(--line2);background:var(--sheet);color:var(--ink3);font-size:13px;cursor:text;transition:border-color 150ms ease-out" style-hover="border-color:var(--ctl)">
+      <svg width="16" height="16"><use href="#i-search"></use></svg><span style="flex:1;text-align:left">Search postings and companies</span>
+      <kbd style="min-width:18px;height:18px;padding:0 4px;box-sizing:border-box;border-radius:4px;border:1px solid var(--line2);background:var(--sunk);font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--ink3);display:inline-flex;align-items:center;justify-content:center">/</kbd>
+    </button>
+    <div style="flex:1"></div>
+    <button onClick="{{ openPal }}" style="height:32px;flex:none;white-space:nowrap;display:flex;align-items:center;gap:8px;padding:0 6px 0 10px;border:0;border-radius:10px;background:transparent;color:var(--ink2);font-size:13px;cursor:pointer;transition:background 150ms ease-out" style-hover="background:var(--navh)" style-active="transform:scale(.98)">Commands<kbd style="height:18px;padding:0 4px;box-sizing:border-box;border-radius:4px;border:1px solid var(--line2);background:var(--sunk);font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--ink3);display:inline-flex;align-items:center">⌘K</kbd></button>
+  </header>
+
+  <main style="flex:1;min-height:0;margin:0 24px 24px 0;background:var(--sheet);border-radius:16px;box-shadow:var(--sh1);display:flex;flex-direction:column;overflow:hidden;position:relative">
+
+  <sc-if value="{{ isTriage }}" hint-placeholder-val="{{ true }}">
+    <div data-screen-label="02 Inbox" style="flex:1;min-height:0;display:flex">
+      <sc-if value="{{ showList }}" hint-placeholder-val="{{ true }}">
+      <section style="width:{{ listW }};flex:none;display:flex;flex-direction:column;border-right:1px solid var(--line);min-height:0">
+        <div style="padding:20px 20px 16px;display:flex;align-items:flex-end;justify-content:space-between;gap:12px;border-bottom:1px solid var(--line)">
+          <div>
+            <h1 style="margin:0;font-size:24px;font-weight:600;letter-spacing:-0.01em">Inbox</h1>
+            <p style="margin:4px 0 0;font-size:13px;color:var(--ink3);white-space:nowrap">{{ inboxSub }}</p>
+          </div>
+          <div role="tablist" style="display:flex;padding:2px;border-radius:10px;background:var(--sunk);box-shadow:inset 0 0 0 1px var(--line)">
+            <sc-for list="{{ sorts }}" as="o" hint-placeholder-count="2">
+              <button role="tab" aria-selected="{{ o.on }}" onClick="{{ o.pick }}" style="height:28px;padding:0 10px;border:0;border-radius:8px;font-size:13px;font-weight:500;cursor:pointer;color:{{ o.color }};background:{{ o.bg }};box-shadow:{{ o.shadow }};transition:background 150ms ease-out, color 150ms ease-out" style-active="transform:scale(.98)">{{ o.label }}</button>
+            </sc-for>
+          </div>
+        </div>
+        <div style="flex:1;min-height:0;overflow-y:auto;padding:4px 0">
+          <sc-if value="{{ isLoading }}">
+            <sc-for list="{{ skel }}" as="k" hint-placeholder-count="9">
+              <div style="height:84px;box-sizing:border-box;padding:10px 16px 10px 20px;display:grid;grid-template-columns:32px minmax(0,1fr) 36px;column-gap:12px;border-bottom:1px solid var(--line);animation:jr-pulse 1400ms ease-in-out infinite">
+                <div style="width:32px;height:32px;border-radius:6px;background:var(--sunk)"></div>
+                <div style="display:flex;flex-direction:column;gap:8px;padding-top:4px"><div style="height:12px;width:{{ k.w1 }};border-radius:6px;background:var(--sunk)"></div><div style="height:10px;width:{{ k.w2 }};border-radius:6px;background:var(--sunk)"></div><div style="display:flex;gap:6px;margin-top:4px"><div style="height:20px;width:88px;border-radius:6px;background:var(--sunk)"></div><div style="height:20px;width:72px;border-radius:6px;background:var(--sunk)"></div></div></div>
+                <div style="height:16px;width:28px;border-radius:6px;background:var(--sunk);justify-self:end;margin-top:4px"></div>
+              </div>
+            </sc-for>
+          </sc-if>
+          <sc-for list="{{ rows }}" as="r" hint-placeholder-count="9">
+            <div onClick="{{ r.open }}" onMouseEnter="{{ r.enter }}" onMouseLeave="{{ r.leave }}" style="position:relative;height:84px;box-sizing:border-box;padding:10px 16px 10px 20px;display:grid;grid-template-columns:32px minmax(0,1fr) 40px;column-gap:12px;cursor:pointer;border-bottom:1px solid var(--line);border-radius:{{ r.radius }};background:{{ r.bg }};box-shadow:{{ r.shadow }};z-index:{{ r.z }};transform:{{ r.tx }};opacity:{{ r.op }};transition:background 160ms ease-out, box-shadow 160ms ease-out, transform 180ms ease-out, opacity 180ms ease-out">
+              <span style="position:absolute;left:6px;top:14px;bottom:14px;width:2px;border-radius:9999px;background:var(--accent);opacity:{{ r.bar }}"></span>
+              <div style="width:32px;height:32px;border-radius:6px;background:{{ r.tileBg }};color:{{ r.tileInk }};font-size:13px;font-weight:600;display:flex;align-items:center;justify-content:center;margin-top:2px">{{ r.ini }}</div>
+              <div style="min-width:0;display:flex;flex-direction:column">
+                <div style="height:20px;display:flex;align-items:center;gap:6px;min-width:0">
+                  <sc-if value="{{ r.unread }}"><span aria-label="New" style="width:6px;height:6px;flex:none;border-radius:9999px;background:var(--accent)"></span></sc-if>
+                  <span style="font-size:14px;font-weight:{{ r.titleW }};color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ r.title }}</span>
+                </div>
+                <div style="height:18px;font-size:12px;color:var(--ink3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ r.meta }}</div>
+                <div style="height:20px;margin-top:6px;display:flex;flex-wrap:wrap;align-items:center;column-gap:6px;row-gap:8px;overflow:hidden">
+                  <span style="height:20px;line-height:20px;max-width:100%;font-size:13px;font-weight:{{ r.salW }};color:{{ r.salC }};white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ r.salary }}</span>
+                  <sc-for list="{{ r.reasons }}" as="c">
+                    <span style="height:20px;padding:0 6px;border-radius:6px;background:var(--sunk);font-size:12px;color:var(--ink2);display:inline-flex;align-items:center;gap:4px;flex:none"><span style="color:{{ c.col }};font-weight:600">{{ c.sign }}</span>{{ c.t }}</span>
+                  </sc-for>
+                </div>
+              </div>
+              <div style="display:flex;flex-direction:column;align-items:flex-end">
+                <span style="height:20px;font-size:16px;font-weight:600;color:{{ r.scoreC }}">{{ r.match }}</span>
+                <span style="font-size:11px;color:var(--ink3)">{{ r.age }}</span>
+              </div>
+              <sc-if value="{{ r.hovered }}">
+                <div style="position:absolute;right:12px;bottom:9px;display:flex;gap:4px;padding-left:8px;background:{{ r.bg }};animation:jr-fade 150ms ease-out">
+                  <button onClick="{{ r.actI }}" title="Interested" style="height:28px;padding:0 8px;border-radius:6px;border:1px solid var(--line2);background:var(--sheet);font-size:12px;color:var(--ink);display:flex;align-items:center;gap:6px;cursor:pointer" style-hover="border-color:var(--ctl)" style-active="transform:scale(.98)"><svg width="16" height="16"><use href="#i-mark"></use></svg><kbd style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--ink3)">i</kbd></button>
+                  <button onClick="{{ r.actS }}" title="Skip" style="height:28px;padding:0 8px;border-radius:6px;border:1px solid var(--line2);background:var(--sheet);font-size:12px;color:var(--ink);display:flex;align-items:center;gap:6px;cursor:pointer" style-hover="border-color:var(--ctl)" style-active="transform:scale(.98)"><svg width="16" height="16"><use href="#i-x"></use></svg><kbd style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--ink3)">s</kbd></button>
+                  <button onClick="{{ r.actA }}" title="Applied" style="height:28px;padding:0 8px;border-radius:6px;border:1px solid var(--line2);background:var(--sheet);font-size:12px;color:var(--ink);display:flex;align-items:center;gap:6px;cursor:pointer" style-hover="border-color:var(--ctl)" style-active="transform:scale(.98)"><svg width="16" height="16"><use href="#i-send"></use></svg><kbd style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--ink3)">a</kbd></button>
+                </div>
+              </sc-if>
+            </div>
+          </sc-for>
+        </div>
+        <div style="height:40px;flex:none;border-top:1px solid var(--line);display:flex;align-items:center;gap:16px;padding:0 20px;font-size:12px;color:var(--ink3)">
+          <span style="display:flex;align-items:center;gap:4px"><kbd style="min-width:18px;height:18px;box-sizing:border-box;border-radius:4px;border:1px solid var(--line2);background:var(--sunk);font-family:'JetBrains Mono',monospace;font-size:11px;display:inline-flex;align-items:center;justify-content:center">j</kbd><kbd style="min-width:18px;height:18px;box-sizing:border-box;border-radius:4px;border:1px solid var(--line2);background:var(--sunk);font-family:'JetBrains Mono',monospace;font-size:11px;display:inline-flex;align-items:center;justify-content:center">k</kbd>Move</span>
+          <span style="display:flex;align-items:center;gap:4px"><kbd style="min-width:18px;height:18px;box-sizing:border-box;border-radius:4px;border:1px solid var(--line2);background:var(--sunk);font-family:'JetBrains Mono',monospace;font-size:11px;display:inline-flex;align-items:center;justify-content:center">o</kbd>Open source</span>
+          <span style="display:flex;align-items:center;gap:4px"><kbd style="height:18px;padding:0 4px;box-sizing:border-box;border-radius:4px;border:1px solid var(--line2);background:var(--sunk);font-family:'JetBrains Mono',monospace;font-size:11px;display:inline-flex;align-items:center">⌘K</kbd>Commands</span>
+        </div>
+      </section>
+      </sc-if>
+
+      <sc-if value="{{ isEmpty }}">
+        <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px">
+          <p style="margin:0;font-size:14px;color:var(--ink2)">{{ emptyLine }}</p>
+          <a href="#/postings" style="font-size:13px;font-weight:500">See all postings</a>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{ isLoading }}">
+        <div style="flex:1;padding:40px 20px 20px;animation:jr-pulse 1400ms ease-in-out infinite">
+          <div style="height:168px;border-radius:16px;background:var(--sunk)"></div>
+          <div style="padding:32px 12px;display:flex;flex-direction:column;gap:12px"><div style="height:14px;width:120px;border-radius:6px;background:var(--sunk)"></div><div style="height:12px;width:70%;border-radius:6px;background:var(--sunk)"></div><div style="height:12px;width:56%;border-radius:6px;background:var(--sunk)"></div><div style="height:12px;width:62%;border-radius:6px;background:var(--sunk)"></div><div style="height:14px;width:96px;border-radius:6px;background:var(--sunk);margin-top:24px"></div><div style="display:flex;gap:8px"><div style="height:28px;width:80px;border-radius:6px;background:var(--sunk)"></div><div style="height:28px;width:104px;border-radius:6px;background:var(--sunk)"></div><div style="height:28px;width:72px;border-radius:6px;background:var(--sunk)"></div></div></div>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{ hasDetail }}" hint-placeholder-val="{{ true }}">
+      <article data-screen-label="{{ detailLabel }}" style="flex:1;min-width:0;overflow-y:auto;position:relative">
+        <div style="max-width:{{ detailMax }};margin:0 auto;padding:0 20px 48px">
+          <div style="position:sticky;top:0;z-index:3;padding-top:40px;background:var(--sheet)">
+            <div style="position:relative;background:var(--raised);border-radius:16px;box-shadow:var(--sh2);padding:36px 24px 20px">
+              <div style="position:absolute;left:24px;top:-24px;width:48px;height:48px;border-radius:10px;background:{{ d.tileBg }};color:{{ d.tileInk }};font-size:20px;font-weight:600;display:flex;align-items:center;justify-content:center;box-shadow:0 0 0 4px var(--sheet), var(--sh1)">{{ d.ini }}</div>
+              <div style="position:absolute;right:24px;top:16px;display:flex;flex-direction:column;align-items:flex-end">
+                <span style="font-size:24px;font-weight:600;line-height:32px;color:{{ d.scoreC }}">{{ d.match }}</span>
+                <span style="font-size:12px;color:var(--ink3)">match</span>
+              </div>
+              <div style="padding-right:72px">
+                <h2 style="margin:0;font-size:20px;font-weight:600;letter-spacing:-0.01em;line-height:28px;text-wrap:pretty">{{ d.title }}</h2>
+                <div style="margin-top:4px;font-size:13px;color:var(--ink2);display:flex;gap:8px;flex-wrap:wrap"><a href="{{ d.coHref }}" style="color:var(--ink);font-weight:500">{{ d.co }}</a><span style="color:var(--ink3)">{{ d.seen }}</span></div>
+              </div>
+              <div style="margin-top:20px;display:flex;flex-wrap:wrap;align-items:center;gap:8px">
+                <button onClick="{{ d.actA }}" style="height:36px;padding:0 10px 0 14px;border:0;border-radius:10px;background:var(--btn);color:var(--btn-ink);font-size:14px;font-weight:500;display:flex;align-items:center;gap:8px;cursor:pointer;transition:background 150ms ease-out, transform 100ms ease-out" style-hover="background:var(--btn-h)" style-active="transform:scale(.98)"><svg width="16" height="16"><use href="#i-send"></use></svg>Applied<kbd style="min-width:18px;height:18px;box-sizing:border-box;border-radius:4px;border:1px solid currentColor;opacity:.6;font-family:'JetBrains Mono',monospace;font-size:11px;display:inline-flex;align-items:center;justify-content:center">a</kbd></button>
+                <button onClick="{{ d.actI }}" style="height:36px;padding:0 10px 0 12px;border-radius:10px;border:1px solid var(--line2);background:var(--sheet);color:var(--ink);font-size:14px;font-weight:500;display:flex;align-items:center;gap:8px;cursor:pointer;transition:border-color 150ms ease-out, transform 100ms ease-out" style-hover="border-color:var(--ctl)" style-active="transform:scale(.98)"><svg width="16" height="16"><use href="#i-mark"></use></svg>Interested<kbd style="min-width:18px;height:18px;box-sizing:border-box;border-radius:4px;border:1px solid var(--line2);background:var(--sunk);font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--ink3);display:inline-flex;align-items:center;justify-content:center">i</kbd></button>
+                <button onClick="{{ d.actS }}" style="height:36px;padding:0 10px 0 12px;border-radius:10px;border:1px solid var(--line2);background:var(--sheet);color:var(--ink);font-size:14px;font-weight:500;display:flex;align-items:center;gap:8px;cursor:pointer;transition:border-color 150ms ease-out, transform 100ms ease-out" style-hover="border-color:var(--ctl)" style-active="transform:scale(.98)"><svg width="16" height="16"><use href="#i-x"></use></svg>Skip<kbd style="min-width:18px;height:18px;box-sizing:border-box;border-radius:4px;border:1px solid var(--line2);background:var(--sunk);font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--ink3);display:inline-flex;align-items:center;justify-content:center">s</kbd></button>
+                <div style="flex:1"></div>
+                <a href="{{ d.srcHref }}" target="_blank" rel="noopener" style="height:32px;padding:0 8px;border-radius:10px;font-size:13px;font-weight:500;display:flex;align-items:center;gap:6px;white-space:nowrap;flex:none">{{ d.srcLabel }}<svg width="16" height="16"><use href="#i-ext"></use></svg><kbd style="min-width:18px;height:18px;box-sizing:border-box;border-radius:4px;border:1px solid var(--line2);background:var(--sunk);font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--ink3);display:inline-flex;align-items:center;justify-content:center">o</kbd></a>
+              </div>
+            </div>
+            <div style="height:12px;background:linear-gradient(var(--sheet),transparent)"></div>
+          </div>
+
+          <div style="padding:0 4px;display:flex;flex-direction:column;gap:32px">
+            <sc-if value="{{ d.closed }}">
+              <p style="margin:4px 0 -8px;display:flex;align-items:center;gap:8px;font-size:13px;color:var(--ink2)"><svg width="16" height="16" style="color:var(--warn);flex:none"><use href="#i-alert"></use></svg>{{ d.closedText }}</p>
+            </sc-if>
+
+            <section>
+              <h3 style="margin:0;font-size:14px;font-weight:600">Key facts</h3>
+              <p style="margin:4px 0 0;font-size:13px;color:var(--ink3)">Extracted automatically from the posting.</p>
+              <div style="margin-top:12px;display:flex;flex-direction:column">
+                <sc-for list="{{ d.facts }}" as="f" hint-placeholder-count="4">
+                  <div style="display:grid;grid-template-columns:16px minmax(0,1fr);column-gap:12px;padding:8px 0;border-bottom:1px solid var(--line)">
+                    <svg width="16" height="16" style="color:var(--ink3);margin-top:2px"><use href="{{ f.i }}"></use></svg>
+                    <div><div style="font-size:14px;color:var(--ink);font-weight:{{ f.w }}">{{ f.t }}</div><sc-if value="{{ f.hasS }}"><div style="font-size:13px;color:var(--ink2);margin-top:2px">{{ f.s }}</div></sc-if></div>
+                  </div>
+                </sc-for>
+              </div>
+              <sc-if value="{{ d.hasBenefits }}">
+                <h4 style="margin:20px 0 4px;font-size:13px;font-weight:600;color:var(--ink2)">Notable benefits</h4>
+                <sc-for list="{{ d.benefits }}" as="b">
+                  <div style="display:grid;grid-template-columns:16px minmax(0,1fr);column-gap:12px;padding:6px 0;font-size:14px;color:var(--ink)"><svg width="16" height="16" style="color:var(--ink3);margin-top:2px"><use href="#i-award"></use></svg><span>{{ b }}</span></div>
+                </sc-for>
+              </sc-if>
+            </section>
+
+            <sc-if value="{{ d.hasStack }}">
+            <section>
+              <h3 style="margin:0;font-size:14px;font-weight:600">Stack fit</h3>
+              <p style="margin:4px 0 0;font-size:13px;color:var(--ink3)">{{ d.stackLine }}</p>
+              <sc-if value="{{ d.hasHave }}">
+                <div style="margin-top:12px;font-size:12px;font-weight:500;color:var(--ink3)">You have</div>
+                <div style="margin:8px -24px 0 0;display:flex;gap:8px;overflow-x:auto;scrollbar-width:none;padding-right:24px">
+                  <sc-for list="{{ d.have }}" as="c"><span style="height:28px;flex:none;padding:0 10px;border-radius:6px;background:var(--sunk);box-shadow:inset 0 0 0 1px var(--line);font-size:13px;color:var(--ink);display:inline-flex;align-items:center;gap:6px"><svg width="16" height="16" style="color:var(--ok)"><use href="#i-check"></use></svg>{{ c }}</span></sc-for>
+                </div>
+              </sc-if>
+              <sc-if value="{{ d.hasGap }}">
+                <div style="margin-top:12px;font-size:12px;font-weight:500;color:var(--ink3)">Gap</div>
+                <div style="margin-top:8px;display:flex;gap:8px;flex-wrap:wrap">
+                  <sc-for list="{{ d.gap }}" as="c"><span style="height:28px;padding:0 10px;border-radius:6px;background:var(--warn-bg);font-size:13px;color:var(--warn);display:inline-flex;align-items:center">{{ c }}</span></sc-for>
+                </div>
+              </sc-if>
+            </section>
+            </sc-if>
+
+            <section>
+              <h3 style="margin:0;font-size:14px;font-weight:600">Why this score</h3>
+              <p style="margin:4px 0 0;font-size:13px;color:var(--ink3)">Each factor with its weight. Weights are set in Settings › Scoring.</p>
+              <div style="margin-top:12px">
+                <sc-for list="{{ d.why }}" as="w" hint-placeholder-count="5">
+                  <div style="display:grid;grid-template-columns:minmax(0,1fr) 120px 40px;column-gap:16px;align-items:center;padding:8px 0;border-bottom:1px solid var(--line)">
+                    <div style="min-width:0"><span style="font-size:14px;color:var(--ink)">{{ w.label }}</span><span style="font-size:13px;color:var(--ink3)"> · {{ w.note }}</span></div>
+                    <div style="height:4px;border-radius:9999px;background:var(--sunk);overflow:hidden"><div style="height:4px;width:{{ w.barW }};background:{{ w.barC }};border-radius:9999px"></div></div>
+                    <span style="text-align:right;font-size:14px;font-weight:500;color:{{ w.col }}">{{ w.wt }}</span>
+                  </div>
+                </sc-for>
+                <div style="display:flex;justify-content:space-between;padding:10px 0 0;font-size:14px;font-weight:600"><span>Match</span><span style="color:{{ d.scoreC }}">{{ d.match }}</span></div>
+              </div>
+            </section>
+
+            <section>
+              <h3 style="margin:0;font-size:14px;font-weight:600">Original description</h3>
+              <p style="margin:4px 0 0;font-size:13px;color:var(--ink3)">{{ d.descLine }}</p>
+              <sc-if value="{{ d.hasDesc }}">
+                <p lang="vi" style="margin:12px 0 0;font-size:14px;line-height:22px;color:var(--ink);text-wrap:pretty;max-width:640px"><sc-for list="{{ d.desc }}" as="g"><span style="font-weight:{{ g.w }};background:{{ g.bg }};border-radius:4px;padding:{{ g.pad }}">{{ g.t }}</span></sc-for></p>
+                <p style="margin:12px 0 0;font-size:13px;color:var(--ink2)">Contact <a href="mailto:lienpta@tinhvan.com">lienpta@tinhvan.com</a></p>
+              </sc-if>
+            </section>
+
+            <section>
+              <div style="display:flex;align-items:center;gap:8px"><h3 style="margin:0;font-size:14px;font-weight:600;flex:1">{{ d.co }}</h3><a href="{{ d.coHref }}" style="font-size:13px;font-weight:500">Company page</a></div>
+              <p style="margin:4px 0 0;font-size:13px;color:var(--ink3)">{{ d.careers }}</p>
+              <div style="margin-top:12px;font-size:12px;font-weight:500;color:var(--ink3)">Other open postings</div>
+              <p style="margin:6px 0 0;font-size:13px;color:var(--ink2)">None at the moment.</p>
+              <sc-if value="{{ d.hasPast }}">
+                <div style="margin-top:16px;font-size:12px;font-weight:500;color:var(--ink3)">Past postings for this role</div>
+                <sc-for list="{{ d.past }}" as="x">
+                  <div style="display:grid;grid-template-columns:72px minmax(0,1fr) auto;column-gap:12px;padding:8px 0;border-bottom:1px solid var(--line);font-size:13px"><span style="color:var(--ink3)">{{ x.date }}</span><span style="color:var(--ink)">{{ x.t }}</span><span style="font-weight:500">{{ x.sal }}</span></div>
+                </sc-for>
+              </sc-if>
+            </section>
+
+            <section>
+              <h3 style="margin:0;font-size:14px;font-weight:600">Sources</h3>
+              <p style="margin:4px 0 0;font-size:13px;color:var(--ink3)">{{ d.srcLine }}</p>
+              <div style="margin-top:8px">
+                <sc-for list="{{ d.sources }}" as="s">
+                  <div style="display:flex;align-items:center;gap:12px;height:40px;border-bottom:1px solid var(--line);font-size:13px"><span style="width:120px;font-weight:500;color:var(--ink)">{{ s.name }}</span><span style="flex:1;color:var(--ink3)">{{ s.note }}</span><a href="{{ s.href }}" target="_blank" rel="noopener" style="display:flex;align-items:center;gap:4px;font-weight:500">Open<svg width="16" height="16"><use href="#i-ext"></use></svg></a></div>
+                </sc-for>
+              </div>
+            </section>
+          </div>
+        </div>
+      </article>
+      </sc-if>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ isPostings }}">
+    <div data-screen-label="04 All postings" style="flex:1;min-height:0;display:flex;flex-direction:column">
+      <div style="padding:20px 24px 0;display:flex;align-items:flex-end;justify-content:space-between">
+        <div><h1 style="margin:0;font-size:24px;font-weight:600;letter-spacing:-0.01em">All postings</h1><p style="margin:4px 0 0;font-size:13px;color:var(--ink3)">{{ allSub }}</p></div>
+      </div>
+      <div style="padding:16px 0 0 24px;display:flex;gap:8px;align-items:center">
+        <div style="position:relative;flex:none">
+          <svg width="16" height="16" style="position:absolute;left:10px;top:8px;color:var(--ink3)"><use href="#i-search"></use></svg>
+          <input ref="{{ searchRef }}" value="{{ q }}" onChange="{{ setQ }}" placeholder="Search title or company" style="width:260px;height:32px;box-sizing:border-box;padding:0 32px;border-radius:10px;border:1px solid var(--line2);background:var(--sheet);font-size:13px;color:var(--ink);transition:border-color 150ms ease-out" style-hover="border-color:var(--ctl)" style-focus="border-color:var(--acc-ink)">
+          <kbd style="position:absolute;right:7px;top:7px;min-width:18px;height:18px;box-sizing:border-box;border-radius:4px;border:1px solid var(--line2);background:var(--sunk);font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--ink3);display:inline-flex;align-items:center;justify-content:center">/</kbd>
+        </div>
+        <div style="flex:1;min-width:0;display:flex;gap:8px;overflow-x:auto;scrollbar-width:none">
+          <sc-for list="{{ filters }}" as="f" hint-placeholder-count="8">
+            <button onClick="{{ f.open }}" style="height:32px;flex:none;padding:0 8px 0 12px;border-radius:10px;border:1px solid {{ f.border }};background:{{ f.bg }};color:{{ f.color }};font-size:13px;font-weight:500;display:flex;align-items:center;gap:4px;cursor:pointer;transition:border-color 150ms ease-out" style-hover="border-color:var(--ctl)" style-active="transform:scale(.98)">{{ f.text }}<svg width="16" height="16" style="color:var(--ink3)"><use href="#i-down"></use></svg></button>
+          </sc-for>
+        </div>
+      </div>
+      <div style="padding:12px 24px;display:flex;gap:8px;align-items:center;border-bottom:1px solid var(--line)">
+        <span style="font-size:12px;color:var(--ink3);margin-right:4px">Saved</span>
+        <sc-for list="{{ saved }}" as="s" hint-placeholder-count="4">
+          <button onClick="{{ s.pick }}" aria-pressed="{{ s.on }}" style="height:28px;padding:0 10px;border-radius:6px;border:1px solid {{ s.border }};background:{{ s.bg }};color:{{ s.color }};font-size:13px;font-weight:500;cursor:pointer;transition:border-color 150ms ease-out" style-hover="border-color:var(--ctl)" style-active="transform:scale(.98)">{{ s.n }}</button>
+        </sc-for>
+        <sc-if value="{{ anyFilter }}"><button onClick="{{ clearF }}" style="height:28px;padding:0 8px;border:0;background:transparent;color:var(--acc-ink);font-size:13px;font-weight:500;cursor:pointer">Clear filters</button></sc-if>
+      </div>
+      <div style="display:grid;grid-template-columns:48px minmax(0,2.4fr) minmax(0,1.6fr) 170px 150px 110px 64px 112px;column-gap:16px;padding:0 24px;height:32px;align-items:center;border-bottom:1px solid var(--line);font-size:12px;color:var(--ink3);font-weight:500">
+        <span>Match</span><span>Posting</span><span>Reasons</span><span>Salary</span><span>Place</span><span>Source</span><span>Seen</span><span>Status</span>
+      </div>
+      <div style="flex:1;min-height:0;overflow-y:auto">
+        <sc-for list="{{ allRows }}" as="r" hint-placeholder-count="10">
+          <a href="{{ r.href }}" style="display:grid;grid-template-columns:48px minmax(0,2.4fr) minmax(0,1.6fr) 170px 150px 110px 64px 112px;column-gap:16px;padding:0 24px;height:56px;align-items:center;border-bottom:1px solid var(--line);color:var(--ink);text-decoration:none;transition:background 150ms ease-out" style-hover="background:var(--hover);text-decoration:none">
+            <span style="font-size:16px;font-weight:600;color:{{ r.scoreC }}">{{ r.match }}</span>
+            <span style="display:flex;align-items:center;gap:12px;min-width:0"><span style="width:28px;height:28px;flex:none;border-radius:6px;background:{{ r.tileBg }};color:{{ r.tileInk }};font-size:12px;font-weight:600;display:flex;align-items:center;justify-content:center">{{ r.ini }}</span><span style="min-width:0;display:flex;flex-direction:column"><span style="font-size:14px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ r.title }}</span><span style="font-size:12px;color:var(--ink3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ r.co }}</span></span></span>
+            <span style="display:flex;flex-wrap:wrap;column-gap:6px;row-gap:8px;height:20px;overflow:hidden;white-space:nowrap"><sc-for list="{{ r.reasons }}" as="c"><span style="height:20px;padding:0 6px;flex:none;border-radius:6px;background:var(--sunk);font-size:12px;color:var(--ink2);display:inline-flex;align-items:center;gap:4px"><span style="color:{{ c.col }};font-weight:600">{{ c.sign }}</span>{{ c.t }}</span></sc-for></span>
+            <span style="font-size:13px;color:{{ r.salC }};white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ r.salary }}</span>
+            <span style="font-size:13px;color:var(--ink2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ r.place }}</span>
+            <span style="font-size:13px;color:var(--ink2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ r.src }}</span>
+            <span style="font-size:13px;color:var(--ink3)">{{ r.age }}</span>
+            <span style="display:flex;align-items:center;gap:6px;font-size:13px;color:var(--ink2)"><span style="width:6px;height:6px;border-radius:9999px;background:{{ r.stC }}"></span>{{ r.status }}</span>
+          </a>
+        </sc-for>
+        <sc-if value="{{ noResults }}">
+          <div style="padding:64px 24px;display:flex;flex-direction:column;align-items:center;gap:12px">
+            <p style="margin:0;font-size:14px;color:var(--ink2)">No postings match these filters.</p>
+            <button onClick="{{ clearF }}" style="height:32px;padding:0 12px;border-radius:10px;border:1px solid var(--line2);background:var(--sheet);font-size:13px;font-weight:500;cursor:pointer" style-hover="border-color:var(--ctl)">Clear filters</button>
+          </div>
+        </sc-if>
+      </div>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ isPipeline }}">
+    <div data-screen-label="05 Pipeline" style="flex:1;min-height:0;display:flex;flex-direction:column">
+      <div style="padding:20px 24px 16px;display:flex;align-items:flex-end;justify-content:space-between;border-bottom:1px solid var(--line)">
+        <div><h1 style="margin:0;font-size:24px;font-weight:600;letter-spacing:-0.01em">Pipeline</h1><p style="margin:4px 0 0;font-size:13px;color:var(--ink3)">Tracked applications by status. Drag a card to move it.</p></div>
+        <label style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--ink2);cursor:pointer">
+          <button role="switch" aria-checked="{{ showClosed }}" onClick="{{ toggleClosed }}" style="width:32px;height:18px;padding:2px;border:0;border-radius:9999px;background:{{ swBg }};cursor:pointer;display:flex;transition:background 150ms ease-out"><span style="width:14px;height:14px;border-radius:9999px;background:#fff;box-shadow:0 1px 2px rgb(0 0 0 / .2);transform:{{ swTx }};transition:transform 150ms ease-out"></span></button>
+          Show Skipped and Closed
+        </label>
+      </div>
+      <div style="flex:1;min-height:0;display:grid;grid-template-columns:{{ pipeCols }};overflow-x:auto">
+        <sc-for list="{{ columns }}" as="c" hint-placeholder-count="4">
+          <div onDragOver="{{ c.over }}" onDrop="{{ c.drop }}" style="min-width:0;display:flex;flex-direction:column;border-right:1px solid var(--line);background:{{ c.bg }};transition:background 150ms ease-out">
+            <div style="height:44px;flex:none;display:flex;align-items:center;gap:8px;padding:0 16px"><span style="width:6px;height:6px;border-radius:9999px;background:{{ c.dot }}"></span><span style="font-size:13px;font-weight:600">{{ c.name }}</span><span style="font-size:13px;color:var(--ink3)">{{ c.count }}</span></div>
+            <div style="flex:1;overflow-y:auto;padding:0 12px 16px;display:flex;flex-direction:column;gap:8px">
+              <sc-for list="{{ c.cards }}" as="k">
+                <a href="{{ k.href }}" draggable="true" onDragStart="{{ k.start }}" onDragEnd="{{ k.end }}" style="display:block;padding:12px;border-radius:10px;background:var(--raised);box-shadow:{{ k.shadow }};border:1px solid var(--line);color:var(--ink);text-decoration:none;cursor:grab;transform:{{ k.tx }};transition:box-shadow 160ms ease-out, transform 160ms ease-out" style-hover="border-color:var(--line2);text-decoration:none">
+                  <div style="display:flex;align-items:center;gap:8px"><span style="width:20px;height:20px;border-radius:6px;background:{{ k.tileBg }};color:{{ k.tileInk }};font-size:11px;font-weight:600;display:flex;align-items:center;justify-content:center">{{ k.ini }}</span><span style="flex:1;font-size:12px;color:var(--ink2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ k.co }}</span><svg width="16" height="16" style="color:var(--ink3)"><use href="#i-grip"></use></svg></div>
+                  <div style="margin-top:8px;font-size:14px;font-weight:500">{{ k.title }}</div>
+                  <div style="margin-top:2px;font-size:13px;color:{{ k.salC }}">{{ k.salary }}</div>
+                  <sc-if value="{{ k.hasNext }}"><div style="margin-top:8px;font-size:13px;color:var(--ink2)">{{ k.next }}</div></sc-if>
+                  <div style="margin-top:8px;font-size:12px;color:var(--ink3)">{{ k.days }}</div>
+                </a>
+              </sc-for>
+              <sc-if value="{{ c.empty }}"><p style="margin:4px 4px;font-size:13px;color:var(--ink3)">{{ c.emptyText }}</p></sc-if>
+            </div>
+          </div>
+        </sc-for>
+      </div>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ isCompanies }}">
+    <div data-screen-label="06 Companies" style="flex:1;min-height:0;display:flex;flex-direction:column">
+      <div style="padding:20px 24px 16px;display:flex;align-items:flex-end;justify-content:space-between;border-bottom:1px solid var(--line)">
+        <div><h1 style="margin:0;font-size:24px;font-weight:600;letter-spacing:-0.01em">Companies</h1><p style="margin:4px 0 0;font-size:13px;color:var(--ink3)">{{ coSub }}</p></div>
+        <label style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--ink2)">
+          <button role="switch" aria-checked="{{ watchOnly }}" onClick="{{ toggleWatchOnly }}" style="width:32px;height:18px;padding:2px;border:0;border-radius:9999px;background:{{ woBg }};cursor:pointer;display:flex;transition:background 150ms ease-out"><span style="width:14px;height:14px;border-radius:9999px;background:#fff;box-shadow:0 1px 2px rgb(0 0 0 / .2);transform:{{ woTx }};transition:transform 150ms ease-out"></span></button>
+          Watchlist only
+        </label>
+      </div>
+      <div style="display:grid;grid-template-columns:minmax(0,2fr) minmax(0,1.2fr) 120px 120px minmax(0,1.4fr) 40px;column-gap:16px;padding:0 24px;height:32px;align-items:center;border-bottom:1px solid var(--line);font-size:12px;color:var(--ink3);font-weight:500"><span>Company</span><span>District</span><span style="text-align:right">Open postings</span><span>Last posting</span><span>Career page</span><span></span></div>
+      <div style="flex:1;overflow-y:auto">
+        <sc-for list="{{ coRows }}" as="c" hint-placeholder-count="10">
+          <div style="display:grid;grid-template-columns:minmax(0,2fr) minmax(0,1.2fr) 120px 120px minmax(0,1.4fr) 40px;column-gap:16px;padding:0 24px;height:48px;align-items:center;border-bottom:1px solid var(--line);transition:background 150ms ease-out" style-hover="background:var(--hover)">
+            <a href="{{ c.href }}" style="display:flex;align-items:center;gap:12px;min-width:0;color:var(--ink);font-size:14px;font-weight:500"><span style="width:28px;height:28px;flex:none;border-radius:6px;background:{{ c.tileBg }};color:{{ c.tileInk }};font-size:12px;font-weight:600;display:flex;align-items:center;justify-content:center">{{ c.ini }}</span><span style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ c.name }}</span></a>
+            <span style="font-size:13px;color:var(--ink2)">{{ c.district }}</span>
+            <span style="font-size:13px;text-align:right">{{ c.open }}</span>
+            <span style="font-size:13px;color:var(--ink2)">{{ c.last }}</span>
+            <span style="display:flex;align-items:center;gap:6px;font-size:13px;color:var(--ink2)"><span style="width:6px;height:6px;border-radius:9999px;background:{{ c.cpC }}"></span>{{ c.cp }}</span>
+            <button onClick="{{ c.toggle }}" aria-pressed="{{ c.watched }}" title="Watchlist" style="width:32px;height:32px;border:0;border-radius:10px;background:transparent;color:{{ c.starC }};display:flex;align-items:center;justify-content:center;cursor:pointer" style-hover="background:var(--navh)"><svg width="16" height="16"><use href="{{ c.star }}"></use></svg></button>
+          </div>
+        </sc-for>
+      </div>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ isCompany }}">
+    <div data-screen-label="07 Company page" style="flex:1;min-height:0;overflow-y:auto">
+      <div style="max-width:880px;margin:0 auto;padding:40px 32px 48px;display:flex;flex-direction:column;gap:32px">
+        <div style="position:relative;background:var(--raised);border-radius:16px;box-shadow:var(--sh2);padding:36px 24px 20px;display:flex;align-items:flex-end;gap:16px">
+          <div style="position:absolute;left:24px;top:-24px;width:48px;height:48px;border-radius:10px;background:{{ cv.tileBg }};color:{{ cv.tileInk }};font-size:20px;font-weight:600;display:flex;align-items:center;justify-content:center;box-shadow:0 0 0 4px var(--sheet), var(--sh1)">{{ cv.ini }}</div>
+          <div style="flex:1;min-width:0">
+            <h1 style="margin:0;font-size:24px;font-weight:600;letter-spacing:-0.01em">{{ cv.name }}</h1>
+            <div style="margin-top:6px;display:flex;gap:16px;font-size:13px;color:var(--ink2)"><sc-if value="{{ cv.hasWeb }}"><a href="{{ cv.webHref }}" target="_blank" rel="noopener">{{ cv.web }}</a></sc-if><span>{{ cv.district }}</span></div>
+          </div>
+          <label style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--ink2)">
+            <button role="switch" aria-checked="{{ cv.watched }}" onClick="{{ cv.toggle }}" style="width:32px;height:18px;padding:2px;border:0;border-radius:9999px;background:{{ cv.swBg }};cursor:pointer;display:flex;transition:background 150ms ease-out"><span style="width:14px;height:14px;border-radius:9999px;background:#fff;box-shadow:0 1px 2px rgb(0 0 0 / .2);transform:{{ cv.swTx }};transition:transform 150ms ease-out"></span></button>
+            Watchlist
+          </label>
+        </div>
+        <section>
+          <h2 style="margin:0;font-size:14px;font-weight:600">Open postings</h2>
+          <p style="margin:4px 0 0;font-size:13px;color:var(--ink3)">{{ cv.openLine }}</p>
+          <div style="margin-top:8px">
+            <sc-for list="{{ cv.open }}" as="r">
+              <a href="{{ r.href }}" style="display:grid;grid-template-columns:40px minmax(0,1fr) 180px 72px;column-gap:16px;align-items:center;height:48px;border-bottom:1px solid var(--line);color:var(--ink);text-decoration:none" style-hover="background:var(--hover);text-decoration:none"><span style="font-size:16px;font-weight:600;color:{{ r.scoreC }}">{{ r.match }}</span><span style="font-size:14px;font-weight:500">{{ r.title }}</span><span style="font-size:13px;color:{{ r.salC }}">{{ r.salary }}</span><span style="font-size:13px;color:var(--ink3)">{{ r.age }}</span></a>
+            </sc-for>
+          </div>
+        </section>
+        <section>
+          <h2 style="margin:0;font-size:14px;font-weight:600">Postings over time</h2>
+          <p style="margin:4px 0 0;font-size:13px;color:var(--ink3)">Every posting seen from this company, April to October 2026, with salary where published.</p>
+          <div style="position:relative;margin-top:24px;height:56px">
+            <div style="position:absolute;left:0;right:0;top:12px;height:1px;background:var(--line2)"></div>
+            <sc-for list="{{ months }}" as="m"><div style="position:absolute;top:8px;left:{{ m.x }};display:flex;flex-direction:column;align-items:center;transform:translateX(-50%)"><span style="width:1px;height:9px;background:var(--line2)"></span><span style="margin-top:8px;font-size:12px;color:var(--ink3)">{{ m.l }}</span></div></sc-for>
+            <sc-for list="{{ cv.points }}" as="p"><span title="{{ p.t }}" style="position:absolute;top:7px;left:{{ p.x }};width:11px;height:11px;margin-left:-5px;border-radius:9999px;background:var(--c1);box-shadow:0 0 0 3px var(--sheet)"></span></sc-for>
+          </div>
+          <div style="margin-top:8px">
+            <sc-for list="{{ cv.points }}" as="p">
+              <div style="display:grid;grid-template-columns:72px minmax(0,1fr) 120px auto;column-gap:16px;padding:10px 0;border-bottom:1px solid var(--line);font-size:13px"><span style="color:var(--ink3)">{{ p.date }}</span><span style="color:var(--ink)">{{ p.t }}</span><span style="color:var(--ink2)">{{ p.src }}</span><span style="font-weight:500;color:{{ p.salC }}">{{ p.sal }}</span></div>
+            </sc-for>
+          </div>
+        </section>
+        <section>
+          <h2 style="margin:0;font-size:14px;font-weight:600">Career page</h2>
+          <p style="margin:4px 0 0;font-size:13px;color:var(--ink3)">Checked daily alongside the job boards.</p>
+          <p style="margin:12px 0 0;display:flex;align-items:center;gap:8px;font-size:14px;color:var(--ink)"><span style="width:6px;height:6px;border-radius:9999px;background:{{ cv.cpC }}"></span>{{ cv.cp }}</p>
+        </section>
+      </div>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ isOverview }}">
+    <div data-screen-label="08 Overview" style="flex:1;min-height:0;overflow-y:auto">
+      <div style="padding:32px 32px 28px;display:flex;align-items:flex-end;gap:48px;border-bottom:1px solid var(--line)">
+        <div style="flex:1">
+          <div style="font-size:13px;font-weight:500;color:var(--ink2)">New matching postings today</div>
+          <div style="display:flex;align-items:baseline;gap:12px;margin-top:4px"><span style="font-size:48px;font-weight:600;letter-spacing:-0.02em;line-height:56px;color:var(--ink)">{{ focal }}</span><a href="#/inbox" style="font-size:14px;font-weight:500">Open Inbox</a></div>
+          <p style="margin:4px 0 0;font-size:13px;color:var(--ink3)">{{ focalLine }}</p>
+        </div>
+        <div style="display:flex;gap:32px;font-size:13px;color:var(--ink2)">
+          <div><div style="font-size:20px;font-weight:600;color:var(--ink)">{{ newTotal }}</div>New postings</div>
+          <div><div style="font-size:20px;font-weight:600;color:var(--ink)">1,284</div>Pages checked</div>
+          <div><div style="font-size:20px;font-weight:600;color:var(--ink)">5 of 6</div>Sources healthy</div>
+        </div>
+      </div>
+      <div style="display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr)">
+        <section style="grid-column:1 / span 2;padding:24px 32px;border-bottom:1px solid var(--line)">
+          <div style="display:flex;justify-content:space-between;gap:16px"><div><h2 style="margin:0;font-size:14px;font-weight:600">New postings per day</h2><p style="margin:4px 0 0;font-size:13px;color:var(--ink3)">DevOps postings in Ho Chi Minh City by the day they were first seen, last 30 days.</p></div><span style="font-size:12px;color:var(--ink3);white-space:nowrap">Updated 06:12</span></div>
+          <div style="margin-top:20px;display:grid;grid-template-columns:24px minmax(0,1fr);column-gap:8px">
+            <div style="position:relative;height:160px">
+              <sc-for list="{{ yTicks }}" as="t"><span style="position:absolute;right:0;bottom:{{ t.y }};transform:translateY(50%);font-size:11px;color:var(--ink3)">{{ t.l }}</span></sc-for>
+            </div>
+            <div style="position:relative;height:160px">
+              <sc-for list="{{ yTicks }}" as="t"><span style="position:absolute;left:0;right:0;bottom:{{ t.y }};height:1px;background:{{ t.c }}"></span></sc-for>
+              <div style="position:absolute;inset:0;display:flex;align-items:flex-end;gap:4px">
+                <sc-for list="{{ perDay }}" as="b" hint-placeholder-count="30"><div title="{{ b.tip }}" style="flex:1;height:{{ b.h }};background:var(--c1);border-radius:2px 2px 0 0;transition:opacity 150ms ease-out" style-hover="opacity:.75"></div></sc-for>
+              </div>
+            </div>
+            <span></span>
+            <div style="display:flex;gap:4px;margin-top:8px"><sc-for list="{{ perDay }}" as="b"><span style="flex:1;font-size:11px;color:var(--ink3);white-space:nowrap;overflow:visible">{{ b.x }}</span></sc-for></div>
+          </div>
+        </section>
+        <section style="padding:24px 32px;border-bottom:1px solid var(--line);border-right:1px solid var(--line)">
+          <div style="display:flex;justify-content:space-between;gap:16px"><div><h2 style="margin:0;font-size:14px;font-weight:600">Postings by source</h2><p style="margin:4px 0 0;font-size:13px;color:var(--ink3)">Postings found in the last run of each job board.</p></div><span style="font-size:12px;color:var(--ink3);white-space:nowrap">Updated 06:12</span></div>
+          <div style="margin-top:16px;display:flex;flex-direction:column;gap:10px">
+            <sc-for list="{{ bySource }}" as="s"><div style="display:grid;grid-template-columns:112px minmax(0,1fr) 32px;column-gap:12px;align-items:center;font-size:13px"><span style="color:var(--ink2)">{{ s.name }}</span><div style="height:8px;border-radius:2px;background:var(--sunk)"><div style="height:8px;width:{{ s.w }};background:var(--c1);border-radius:2px"></div></div><span style="text-align:right;font-weight:500">{{ s.n }}</span></div></sc-for>
+          </div>
+        </section>
+        <section style="padding:24px 32px;border-bottom:1px solid var(--line)">
+          <div style="display:flex;justify-content:space-between;gap:16px"><div><h2 style="margin:0;font-size:14px;font-weight:600">Salary distribution, DevOps in HCMC</h2><p style="margin:4px 0 0;font-size:13px;color:var(--ink3)">{{ salLine }}</p></div><span style="font-size:12px;color:var(--ink3);white-space:nowrap">Updated 06:12</span></div>
+          <div style="margin-top:24px;position:relative;height:72px">
+            <div style="position:absolute;left:0;right:0;top:28px;height:1px;background:var(--line2)"></div>
+            <div title="Tinhvan Software JSC · 23–27M VND" style="position:absolute;top:16px;left:38.33%;width:6.67%;height:24px;border-radius:2px;background:var(--c1)"></div>
+            <span style="position:absolute;top:0;left:38.33%;font-size:12px;color:var(--ink2);white-space:nowrap">23–27M · Tinhvan</span>
+            <sc-for list="{{ salTicks }}" as="t"><div style="position:absolute;top:28px;left:{{ t.x }};display:flex;flex-direction:column;align-items:center;transform:translateX(-50%)"><span style="width:1px;height:6px;background:var(--line2)"></span><span style="margin-top:6px;font-size:11px;color:var(--ink3)">{{ t.l }}</span></div></sc-for>
+          </div>
+          <div style="margin-top:16px;display:flex;height:8px;border-radius:2px;overflow:hidden;gap:2px"><div style="width:{{ salPubW }};background:var(--c1)"></div><div style="flex:1;background:var(--c2)"></div></div>
+          <div style="margin-top:8px;display:flex;gap:16px;font-size:12px;color:var(--ink2)"><span style="display:flex;align-items:center;gap:6px"><span style="width:8px;height:8px;border-radius:2px;background:var(--c1)"></span>Salary published {{ salPub }}</span><span style="display:flex;align-items:center;gap:6px"><span style="width:8px;height:8px;border-radius:2px;background:var(--c2)"></span>Salary not shown {{ salHidden }}</span></div>
+        </section>
+        <section style="padding:24px 32px;border-right:1px solid var(--line)">
+          <div style="display:flex;justify-content:space-between;gap:16px"><div><h2 style="margin:0;font-size:14px;font-weight:600">Most requested skills this month</h2><p style="margin:4px 0 0;font-size:13px;color:var(--ink3)">Postings naming each skill, compared with the current stack.</p></div><span style="font-size:12px;color:var(--ink3);white-space:nowrap">Updated 06:12</span></div>
+          <div style="margin-top:12px;display:flex;gap:16px;font-size:12px;color:var(--ink2)"><span style="display:flex;align-items:center;gap:6px"><span style="width:8px;height:8px;border-radius:2px;background:var(--c1)"></span>In stack</span><span style="display:flex;align-items:center;gap:6px"><span style="width:8px;height:8px;border-radius:2px;background:var(--c3)"></span>Gap</span></div>
+          <div style="margin-top:12px;display:flex;flex-direction:column;gap:8px">
+            <sc-for list="{{ skills }}" as="s"><div style="display:grid;grid-template-columns:112px minmax(0,1fr) 24px;column-gap:12px;align-items:center;font-size:13px"><span style="color:var(--ink2)">{{ s.name }}</span><div style="height:8px"><div style="height:8px;width:{{ s.w }};background:{{ s.c }};border-radius:2px"></div></div><span style="text-align:right;font-weight:500">{{ s.n }}</span></div></sc-for>
+          </div>
+        </section>
+        <section style="padding:24px 32px">
+          <div style="display:flex;justify-content:space-between;gap:16px"><div><h2 style="margin:0;font-size:14px;font-weight:600">Companies hiring most</h2><p style="margin:4px 0 0;font-size:13px;color:var(--ink3)">Open DevOps postings per company. None has more than one this month.</p></div><span style="font-size:12px;color:var(--ink3);white-space:nowrap">Updated 06:12</span></div>
+          <div style="margin-top:12px">
+            <sc-for list="{{ topCos }}" as="c"><a href="{{ c.href }}" style="display:grid;grid-template-columns:minmax(0,1fr) 64px 56px;column-gap:12px;align-items:center;height:36px;border-bottom:1px solid var(--line);font-size:13px;color:var(--ink);text-decoration:none" style-hover="background:var(--hover);text-decoration:none"><span style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ c.name }}</span><span style="text-align:right;color:var(--ink2)">{{ c.open }} open</span><span style="text-align:right;font-weight:600;color:{{ c.scoreC }}">{{ c.match }}</span></a></sc-for>
+          </div>
+        </section>
+      </div>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ isSources }}">
+    <div data-screen-label="09 Sources" style="flex:1;min-height:0;overflow-y:auto">
+      <div style="padding:20px 24px 16px"><h1 style="margin:0;font-size:24px;font-weight:600;letter-spacing:-0.01em">Sources</h1><p style="margin:4px 0 0;font-size:13px;color:var(--ink3)">Where postings come from and whether each check is working.</p></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;border-top:1px solid var(--line);border-bottom:1px solid var(--line)">
+        <sc-for list="{{ usage }}" as="u">
+          <div style="padding:20px 24px;border-right:1px solid var(--line)">
+            <div style="font-size:13px;font-weight:500;color:var(--ink2)">{{ u.label }}</div>
+            <div style="margin-top:4px;display:flex;align-items:baseline;gap:6px"><span style="font-size:24px;font-weight:600">{{ u.n }}</span><span style="font-size:13px;color:var(--ink3)">of {{ u.of }} daily limit</span></div>
+            <div style="margin-top:12px;height:4px;border-radius:9999px;background:var(--sunk)"><div style="height:4px;width:{{ u.w }};border-radius:9999px;background:var(--ink)"></div></div>
+            <div style="margin-top:8px;font-size:12px;color:var(--ink3)">{{ u.note }}</div>
+          </div>
+        </sc-for>
+      </div>
+      <div style="display:grid;grid-template-columns:minmax(0,1.6fr) minmax(0,1.2fr) 120px 112px 120px 80px 32px;column-gap:16px;padding:0 24px;height:32px;align-items:center;border-bottom:1px solid var(--line);font-size:12px;color:var(--ink3);font-weight:500"><span>Source</span><span>Kind</span><span>Status</span><span>Last checked</span><span style="text-align:right">Found last run</span><span style="text-align:right">Errors</span><span></span></div>
+      <sc-for list="{{ srcRows }}" as="s" hint-placeholder-count="8">
+        <div style="border-bottom:1px solid var(--line)">
+          <button onClick="{{ s.toggle }}" disabled="{{ s.noToggle }}" aria-expanded="{{ s.open }}" style="width:100%;display:grid;grid-template-columns:minmax(0,1.6fr) minmax(0,1.2fr) 120px 112px 120px 80px 32px;column-gap:16px;padding:0 24px;height:48px;align-items:center;border:0;background:transparent;text-align:left;cursor:{{ s.cursor }};transition:background 150ms ease-out" style-hover="background:var(--hover)">
+            <span style="min-width:0"><span style="font-size:14px;font-weight:500;color:var(--ink)">{{ s.name }}</span><sc-if value="{{ s.hasNote }}"><span style="font-size:12px;color:var(--ink3)"> · {{ s.note }}</span></sc-if></span>
+            <span style="font-size:13px;color:var(--ink2)">{{ s.kind }}</span>
+            <span style="display:flex;align-items:center;gap:6px;font-size:13px;color:{{ s.stC }};font-weight:500"><span style="width:6px;height:6px;border-radius:9999px;background:{{ s.stC }}"></span>{{ s.status }}</span>
+            <span style="font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--ink2)">{{ s.last }}</span>
+            <span style="text-align:right;font-size:13px">{{ s.found }}</span>
+            <span style="text-align:right;font-size:13px;color:{{ s.errC }}">{{ s.errors }}</span>
+            <sc-if value="{{ s.canOpen }}"><svg width="16" height="16" style="color:var(--ink3);transform:{{ s.chev }};transition:transform 150ms ease-out"><use href="#i-chev"></use></svg></sc-if>
+          </button>
+          <sc-if value="{{ s.open }}">
+            <div style="padding:0 24px 16px 24px;display:flex;align-items:flex-start;gap:12px;animation:jr-in 150ms ease-out">
+              <svg width="16" height="16" style="color:{{ s.stC }};flex:none;margin-top:2px"><use href="#i-alert"></use></svg>
+              <div style="flex:1"><div style="font-size:14px;color:var(--ink)">{{ s.error }}</div><div style="margin-top:2px;font-size:13px;color:var(--ink3)">{{ s.error2 }}</div></div>
+              <button onClick="{{ s.check }}" disabled="{{ s.checking }}" style="height:32px;min-width:104px;padding:0 12px;border-radius:10px;border:1px solid var(--line2);background:var(--sheet);font-size:13px;font-weight:500;display:flex;align-items:center;justify-content:center;gap:8px;cursor:pointer" style-hover="border-color:var(--ctl)" style-active="transform:scale(.98)"><sc-if value="{{ s.checking }}"><span style="width:12px;height:12px;border-radius:9999px;border:2px solid currentColor;border-right-color:transparent;box-sizing:border-box;animation:jr-spin 700ms linear infinite"></span></sc-if>{{ s.checkLabel }}</button>
+            </div>
+          </sc-if>
+        </div>
+      </sc-for>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ isSettings }}">
+    <div data-screen-label="{{ setLabel }}" style="flex:1;min-height:0;display:flex">
+      <nav style="width:220px;flex:none;border-right:1px solid var(--line);padding:20px 12px;display:flex;flex-direction:column;gap:2px">
+        <h1 style="margin:0 8px 16px;font-size:24px;font-weight:600;letter-spacing:-0.01em">Settings</h1>
+        <sc-for list="{{ tabs }}" as="t" hint-placeholder-count="5">
+          <a href="{{ t.href }}" aria-current="{{ t.on }}" style="position:relative;height:28px;display:flex;align-items:center;padding:0 8px;border-radius:6px;font-size:13px;font-weight:500;color:{{ t.color }};background:{{ t.bg }};text-decoration:none" style-hover="background:var(--hover);color:var(--ink);text-decoration:none"><span style="position:absolute;left:-12px;top:6px;bottom:6px;width:2px;border-radius:9999px;background:var(--accent);opacity:{{ t.bar }}"></span>{{ t.label }}</a>
+        </sc-for>
+      </nav>
+      <div style="flex:1;min-width:0;overflow-y:auto">
+        <div style="max-width:680px;padding:28px 32px 48px">
+          <sc-if value="{{ tabScoring }}">
+            <h2 style="margin:0;font-size:20px;font-weight:600">Scoring</h2>
+            <p style="margin:4px 0 0;font-size:13px;color:var(--ink3)">How much each factor counts toward the match score.</p>
+            <div style="margin-top:20px;padding:12px 16px;border-radius:10px;background:var(--sunk);font-size:14px;color:var(--ink)">With these weights, <strong style="font-weight:600">{{ passD }} of today's postings</strong> pass the digest and {{ passA }} send an instant alert.</div>
+            <div style="margin-top:24px">
+              <sc-for list="{{ weights }}" as="w" hint-placeholder-count="5">
+                <div style="display:grid;grid-template-columns:minmax(0,1fr) 220px 40px;column-gap:16px;align-items:center;padding:12px 0;border-bottom:1px solid var(--line)">
+                  <div><div style="font-size:14px;font-weight:500">{{ w.label }}</div><div style="font-size:13px;color:var(--ink3)">{{ w.note }}</div></div>
+                  <input type="range" min="0" max="50" value="{{ w.v }}" onChange="{{ w.set }}" aria-label="{{ w.label }}" style="width:100%;accent-color:var(--btn)">
+                  <span style="text-align:right;font-size:14px;font-weight:500">{{ w.v }}</span>
+                </div>
+              </sc-for>
+            </div>
+            <h3 style="margin:32px 0 0;font-size:14px;font-weight:600">Thresholds</h3>
+            <p style="margin:4px 0 0;font-size:13px;color:var(--ink3)">Minimum match for the morning digest and for an instant alert.</p>
+            <sc-for list="{{ thresholds }}" as="w">
+              <div style="display:grid;grid-template-columns:minmax(0,1fr) 220px 40px;column-gap:16px;align-items:center;padding:12px 0;border-bottom:1px solid var(--line)">
+                <div style="font-size:14px;font-weight:500">{{ w.label }}</div>
+                <input type="range" min="0" max="100" value="{{ w.v }}" onChange="{{ w.set }}" aria-label="{{ w.label }}" style="width:100%;accent-color:var(--btn)">
+                <span style="text-align:right;font-size:14px;font-weight:500">{{ w.v }}</span>
+              </div>
+            </sc-for>
+            <h3 style="margin:32px 0 0;font-size:14px;font-weight:600">Preview</h3>
+            <p style="margin:4px 0 0;font-size:13px;color:var(--ink3)">Today's postings rescored with the weights above.</p>
+            <div style="margin-top:8px">
+              <sc-for list="{{ preview }}" as="p">
+                <div style="display:grid;grid-template-columns:minmax(0,1fr) 120px 40px;column-gap:16px;align-items:center;height:36px;border-bottom:1px solid var(--line);font-size:13px;opacity:{{ p.op }}"><span style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ p.co }} · {{ p.title }}</span><span style="color:var(--ink3)">{{ p.tag }}</span><span style="text-align:right;font-weight:600;color:{{ p.scoreC }}">{{ p.s }}</span></div>
+              </sc-for>
+            </div>
+            <div style="margin-top:24px;display:flex;gap:8px">
+              <button onClick="{{ saveSettings }}" style="height:36px;padding:0 14px;border:0;border-radius:10px;background:var(--btn);color:var(--btn-ink);font-size:14px;font-weight:500;cursor:pointer" style-hover="background:var(--btn-h)" style-active="transform:scale(.98)">Save weights</button>
+              <button onClick="{{ resetW }}" style="height:36px;padding:0 12px;border:0;border-radius:10px;background:transparent;font-size:14px;font-weight:500;color:var(--ink2);cursor:pointer" style-hover="background:var(--hover)" style-active="transform:scale(.98)">Reset to defaults</button>
+            </div>
+          </sc-if>
+
+          <sc-if value="{{ tabSearch }}">
+            <h2 style="margin:0;font-size:20px;font-weight:600">Search</h2>
+            <p style="margin:4px 0 0;font-size:13px;color:var(--ink3)">What the crawler looks for on every source.</p>
+            <h3 style="margin:28px 0 0;font-size:14px;font-weight:600">Keywords</h3>
+            <p style="margin:4px 0 0;font-size:13px;color:var(--ink3)">A posting matches when its title contains any of these.</p>
+            <div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+              <sc-for list="{{ kw }}" as="k"><span style="height:28px;padding:0 4px 0 10px;border-radius:6px;background:var(--sunk);box-shadow:inset 0 0 0 1px var(--line);font-size:13px;display:inline-flex;align-items:center;gap:2px">{{ k.t }}<button onClick="{{ k.rm }}" aria-label="Remove" style="width:20px;height:20px;border:0;border-radius:4px;background:transparent;color:var(--ink3);display:flex;align-items:center;justify-content:center;cursor:pointer" style-hover="background:var(--navh);color:var(--ink)"><svg width="12" height="12"><use href="#i-x"></use></svg></button></span></sc-for>
+              <input value="{{ kwDraft }}" onChange="{{ setKw }}" onKeyDown="{{ addKw }}" placeholder="Add keyword" style="width:140px;height:28px;box-sizing:border-box;padding:0 10px;border-radius:6px;border:1px dashed var(--line2);background:transparent;font-size:13px" style-focus="border-style:solid;border-color:var(--acc-ink)">
+            </div>
+            <h3 style="margin:28px 0 0;font-size:14px;font-weight:600">Locations</h3>
+            <p style="margin:4px 0 0;font-size:13px;color:var(--ink3)">Postings outside these places are not scored.</p>
+            <div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap"><sc-for list="{{ locs }}" as="k"><span style="height:28px;padding:0 10px;border-radius:6px;background:var(--sunk);box-shadow:inset 0 0 0 1px var(--line);font-size:13px;display:inline-flex;align-items:center">{{ k }}</span></sc-for></div>
+            <h3 style="margin:28px 0 0;font-size:14px;font-weight:600">Work mode</h3>
+            <div style="margin-top:8px">
+              <sc-for list="{{ modeRows }}" as="m">
+                <div style="display:flex;align-items:center;justify-content:space-between;height:48px;border-bottom:1px solid var(--line)"><span style="font-size:14px">{{ m.label }}</span><button role="switch" aria-checked="{{ m.on }}" aria-label="{{ m.label }}" onClick="{{ m.toggle }}" style="width:32px;height:18px;padding:2px;border:0;border-radius:9999px;background:{{ m.bg }};cursor:pointer;display:flex;transition:background 150ms ease-out"><span style="width:14px;height:14px;border-radius:9999px;background:#fff;box-shadow:0 1px 2px rgb(0 0 0 / .2);transform:{{ m.tx }};transition:transform 150ms ease-out"></span></button></div>
+              </sc-for>
+            </div>
+          </sc-if>
+
+          <sc-if value="{{ tabWatch }}">
+            <h2 style="margin:0;font-size:20px;font-weight:600">Watchlist</h2>
+            <p style="margin:4px 0 0;font-size:13px;color:var(--ink3)">New postings from these companies always reach the digest.</p>
+            <div style="margin-top:20px;display:flex;gap:8px">
+              <input value="{{ watchDraft }}" onChange="{{ setWatchDraft }}" onKeyDown="{{ addWatchKey }}" placeholder="Company name" style="flex:1;height:32px;box-sizing:border-box;padding:0 12px;border-radius:10px;border:1px solid var(--line2);background:var(--sheet);font-size:13px" style-hover="border-color:var(--ctl)" style-focus="border-color:var(--acc-ink)">
+              <button onClick="{{ addWatch }}" disabled="{{ watchEmpty }}" style="height:32px;padding:0 12px;border-radius:10px;border:1px solid var(--line2);background:var(--sheet);font-size:13px;font-weight:500;display:flex;align-items:center;gap:6px;cursor:{{ watchCursor }};opacity:{{ watchOp }}"><svg width="16" height="16"><use href="#i-plus"></use></svg>Add</button>
+            </div>
+            <div style="margin-top:16px">
+              <sc-for list="{{ watchRows }}" as="c">
+                <div style="display:flex;align-items:center;gap:12px;height:48px;border-bottom:1px solid var(--line)"><span style="width:28px;height:28px;border-radius:6px;background:{{ c.tileBg }};color:{{ c.tileInk }};font-size:12px;font-weight:600;display:flex;align-items:center;justify-content:center">{{ c.ini }}</span><a href="{{ c.href }}" style="flex:1;font-size:14px;font-weight:500;color:var(--ink)">{{ c.name }}</a><span style="font-size:13px;color:var(--ink3)">{{ c.open }}</span><button onClick="{{ c.rm }}" style="height:32px;padding:0 10px;border:0;border-radius:10px;background:transparent;color:var(--bad);font-size:13px;font-weight:500;cursor:pointer" style-hover="background:var(--bad-bg)" style-active="transform:scale(.98)">Remove</button></div>
+              </sc-for>
+            </div>
+          </sc-if>
+
+          <sc-if value="{{ tabDigest }}">
+            <h2 style="margin:0;font-size:20px;font-weight:600">Digest</h2>
+            <p style="margin:4px 0 0;font-size:13px;color:var(--ink3)">The morning Telegram message with new matching postings.</p>
+            <div style="margin-top:20px">
+              <div style="display:flex;align-items:center;justify-content:space-between;gap:16px;padding:12px 0;border-bottom:1px solid var(--line)"><div><div style="font-size:14px;font-weight:500">Telegram digest time</div><div style="font-size:13px;color:var(--ink3)">Sent daily, 24-hour time, Ho Chi Minh City.</div></div><input type="time" value="{{ digest }}" onChange="{{ setDigest }}" style="width:112px;height:32px;box-sizing:border-box;padding:0 10px;border-radius:10px;border:1px solid var(--line2);background:var(--sheet);font-size:14px" style-focus="border-color:var(--acc-ink)"></div>
+              <div style="display:flex;align-items:center;justify-content:space-between;gap:16px;padding:12px 0;border-bottom:1px solid var(--line)"><div><div style="font-size:14px;font-weight:500">Instant alerts</div><div style="font-size:13px;color:var(--ink3)">{{ alertLine }}</div></div><button role="switch" aria-checked="{{ instant }}" aria-label="Instant alerts" onClick="{{ toggleInstant }}" style="width:32px;height:18px;padding:2px;border:0;border-radius:9999px;background:{{ inBg }};cursor:pointer;display:flex;transition:background 150ms ease-out"><span style="width:14px;height:14px;border-radius:9999px;background:#fff;box-shadow:0 1px 2px rgb(0 0 0 / .2);transform:{{ inTx }};transition:transform 150ms ease-out"></span></button></div>
+              <div style="display:flex;align-items:center;justify-content:space-between;gap:16px;padding:12px 0;border-bottom:1px solid var(--line)"><div><div style="font-size:14px;font-weight:500">Telegram</div><div style="font-size:13px;color:var(--ink3)">Last digest sent today at 07:30.</div></div><span style="display:flex;align-items:center;gap:6px;font-size:13px;color:var(--ok);font-weight:500"><span style="width:6px;height:6px;border-radius:9999px;background:var(--ok)"></span>Connected</span></div>
+            </div>
+          </sc-if>
+
+          <sc-if value="{{ tabPassword }}">
+            <h2 style="margin:0;font-size:20px;font-weight:600">Password</h2>
+            <p style="margin:4px 0 0;font-size:13px;color:var(--ink3)">The single password used to sign in.</p>
+            <div style="margin-top:20px;display:flex;flex-direction:column;gap:16px;max-width:360px">
+              <sc-for list="{{ passFields }}" as="f">
+                <label style="display:flex;flex-direction:column;gap:6px"><span style="font-size:13px;font-weight:500;color:var(--ink2)">{{ f.label }}</span><input type="password" value="{{ f.v }}" onChange="{{ f.set }}" style="height:32px;box-sizing:border-box;padding:0 12px;border-radius:10px;border:1px solid {{ f.border }};background:{{ f.bg }};font-size:14px" style-focus="border-color:var(--acc-ink)"><sc-if value="{{ f.err }}"><span style="font-size:12px;color:var(--bad)">Passwords do not match.</span></sc-if></label>
+              </sc-for>
+              <button onClick="{{ savePass }}" style="align-self:flex-start;height:36px;padding:0 14px;border:0;border-radius:10px;background:var(--btn);color:var(--btn-ink);font-size:14px;font-weight:500;cursor:pointer" style-hover="background:var(--btn-h)" style-active="transform:scale(.98)">Change password</button>
+            </div>
+          </sc-if>
+        </div>
+      </div>
+    </div>
+  </sc-if>
+  </main>
+</div>
+</sc-if>
+
+<sc-if value="{{ menuOpen }}">
+  <div onClick="{{ closeMenu }}" style="position:fixed;inset:0;z-index:40"></div>
+  <div role="menu" style="position:fixed;z-index:41;left:{{ menuX }};top:{{ menuY }};min-width:200px;padding:4px;border-radius:10px;background:var(--raised);box-shadow:var(--sh3);border:1px solid var(--line);animation:jr-in 150ms ease-out">
+    <sc-for list="{{ menuItems }}" as="m">
+      <button role="menuitemradio" aria-checked="{{ m.on }}" onClick="{{ m.pick }}" style="width:100%;height:28px;padding:0 8px;border:0;border-radius:6px;background:transparent;font-size:13px;color:var(--ink);display:flex;align-items:center;gap:8px;text-align:left;cursor:pointer" style-hover="background:var(--hover)"><svg width="16" height="16" style="opacity:{{ m.op }};color:var(--ink)"><use href="#i-check"></use></svg>{{ m.label }}</button>
+    </sc-for>
+  </div>
+</sc-if>
+
+<sc-if value="{{ pal }}">
+  <div onClick="{{ closePal }}" style="position:fixed;inset:0;z-index:50;background:var(--scrim);animation:jr-fade 150ms ease-out"></div>
+  <div role="dialog" aria-label="Command palette" style="position:fixed;z-index:51;left:50%;top:120px;width:560px;margin-left:-280px;border-radius:16px;background:var(--raised);box-shadow:var(--sh3);overflow:hidden;animation:jr-pop 150ms ease-out">
+    <div style="height:48px;display:flex;align-items:center;gap:10px;padding:0 16px;border-bottom:1px solid var(--line)"><svg width="18" height="18" style="color:var(--ink3)"><use href="#i-search"></use></svg><input ref="{{ palRef }}" value="{{ pq }}" onChange="{{ setPq }}" onKeyDown="{{ palKey }}" placeholder="Type a command or search postings" style="flex:1;height:40px;border:0;background:transparent;font-size:14px;color:var(--ink);outline:none"><kbd style="height:18px;padding:0 4px;box-sizing:border-box;border-radius:4px;border:1px solid var(--line2);background:var(--sunk);font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--ink3);display:inline-flex;align-items:center">esc</kbd></div>
+    <div style="max-height:360px;overflow-y:auto;padding:4px 8px 8px">
+      <sc-for list="{{ palItems }}" as="p">
+        <sc-if value="{{ p.first }}"><div style="padding:10px 8px 4px;font-size:12px;font-weight:500;color:var(--ink3)">{{ p.g }}</div></sc-if>
+        <button onClick="{{ p.run }}" onMouseEnter="{{ p.enter }}" style="width:100%;height:36px;padding:0 8px;border:0;border-radius:6px;background:{{ p.bg }};font-size:14px;color:var(--ink);display:flex;align-items:center;gap:10px;text-align:left;cursor:pointer"><svg width="16" height="16" style="color:var(--ink3);flex:none"><use href="{{ p.icon }}"></use></svg><span style="flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ p.label }}</span><sc-if value="{{ p.hasHint }}"><kbd style="min-width:18px;height:18px;padding:0 4px;box-sizing:border-box;border-radius:4px;border:1px solid var(--line2);background:var(--sunk);font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--ink3);display:inline-flex;align-items:center;justify-content:center">{{ p.hint }}</kbd></sc-if></button>
+      </sc-for>
+      <sc-if value="{{ palEmpty }}"><p style="margin:16px 8px;font-size:13px;color:var(--ink3)">No commands or postings match.</p></sc-if>
+    </div>
+    <div style="height:36px;display:flex;align-items:center;gap:16px;padding:0 16px;border-top:1px solid var(--line);font-size:12px;color:var(--ink3)"><span>↑ ↓ to move</span><span>↵ to run</span></div>
+  </div>
+</sc-if>
+
+<sc-if value="{{ dlgOpen }}">
+  <div onClick="{{ closeDlg }}" style="position:fixed;inset:0;z-index:50;background:var(--scrim);animation:jr-fade 150ms ease-out"></div>
+  <div role="dialog" aria-label="Mark as Applied" style="position:fixed;z-index:51;left:50%;top:50%;width:440px;margin:-150px 0 0 -220px;padding:24px;box-sizing:border-box;border-radius:16px;background:var(--raised);box-shadow:var(--sh3);animation:jr-pop 150ms ease-out">
+    <h2 style="margin:0;font-size:16px;font-weight:600">Mark as Applied</h2>
+    <p style="margin:4px 0 0;font-size:13px;color:var(--ink3)">{{ dlgSub }}</p>
+    <label style="margin-top:20px;display:flex;flex-direction:column;gap:6px"><span style="font-size:13px;font-weight:500;color:var(--ink2)">Note (optional)</span><textarea ref="{{ noteRef }}" value="{{ note }}" onChange="{{ setNote }}" onKeyDown="{{ noteKey }}" rows="3" placeholder="Next step, e.g. Follow up with recruiter on 30 Oct" style="resize:none;padding:8px 12px;border-radius:10px;border:1px solid var(--line2);background:var(--sheet);font-size:14px;line-height:20px" style-focus="border-color:var(--acc-ink)"></textarea><span style="font-size:12px;color:var(--ink3)">Shown as the next step on the pipeline card.</span></label>
+    <div style="margin-top:24px;display:flex;justify-content:flex-end;gap:8px">
+      <button onClick="{{ closeDlg }}" style="height:36px;padding:0 12px;border-radius:10px;border:1px solid var(--line2);background:var(--sheet);font-size:14px;font-weight:500;cursor:pointer" style-hover="border-color:var(--ctl)" style-active="transform:scale(.98)">Cancel</button>
+      <button onClick="{{ confirmApplied }}" style="height:36px;padding:0 10px 0 14px;border:0;border-radius:10px;background:var(--btn);color:var(--btn-ink);font-size:14px;font-weight:500;display:flex;align-items:center;gap:8px;cursor:pointer" style-hover="background:var(--btn-h)" style-active="transform:scale(.98)">Mark as Applied<kbd style="height:18px;padding:0 4px;box-sizing:border-box;border-radius:4px;border:1px solid currentColor;opacity:.6;font-family:'JetBrains Mono',monospace;font-size:11px;display:inline-flex;align-items:center">⌘↵</kbd></button>
+    </div>
+  </div>
+</sc-if>
+
+<sc-if value="{{ hasToast }}">
+  <div role="status" style="position:fixed;z-index:60;left:50%;bottom:32px;transform:translateX(-50%);height:44px;display:flex;align-items:center;gap:12px;padding:0 8px 0 16px;border-radius:10px;background:var(--raised);box-shadow:var(--sh3);border:1px solid var(--line);font-size:14px;animation:jr-in 150ms ease-out">
+    <span>{{ toastText }}</span><span style="width:1px;height:20px;background:var(--line)"></span>
+    <button onClick="{{ undo }}" style="height:32px;padding:0 8px;border:0;border-radius:6px;background:transparent;color:var(--acc-ink);font-size:14px;font-weight:500;display:flex;align-items:center;gap:6px;cursor:pointer" style-hover="background:var(--hover)"><svg width="16" height="16"><use href="#i-undo"></use></svg>Undo</button>
+  </div>
+</sc-if>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:1440,&quot;height&quot;:900},&quot;theme&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;light&quot;,&quot;dark&quot;],&quot;default&quot;:&quot;light&quot;,&quot;tsType&quot;:&quot;'light'|'dark'&quot;},&quot;inboxState&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;live&quot;,&quot;loading&quot;,&quot;empty&quot;],&quot;default&quot;:&quot;live&quot;,&quot;tsType&quot;:&quot;'live'|'loading'|'empty'&quot;}}">
+const TODAY=new Date(2026,9,23);
+const MON=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+const dOf=d=>{const x=new Date(TODAY);x.setDate(x.getDate()-d);return x;};
+const fmt=d=>{const x=dOf(d);return x.getDate()+' '+MON[x.getMonth()];};
+const HIS=['Docker','Docker Compose','Kubernetes','Helm','GitLab CI','GitHub Actions','Jenkins','Harbor','Ansible','Terraform','Prometheus','Grafana','Loki','Tempo','Linux','Traefik','Tailscale','Vault','Trivy','Cloudflare','Google Cloud','Bash','Python'];
+const inStack=s=>s==='CI/CD'||HIS.some(h=>h.toLowerCase().startsWith(s.toLowerCase()));
+const HCM='Ho Chi Minh';
+const P=[
+ {id:'tinhvan',cid:'tinhvan',co:'Tinhvan Software JSC',ini:'T',hue:4,title:'DevOps Engineer (3+ yrs)',salary:'23–27M VND + onsite allowance',mode:'Onsite',place:'Onsite · District 7',district:'District 7',sources:['LinkedIn','Tech Hot Jobs'],repost:true,age:'6 months',ageDays:183,closed:true,match:78,reasons:[['+','Cert sponsorship 100%'],['+','Kubernetes'],['−','Azure preferred']],have:['Docker','Kubernetes','GitHub Actions','Linux','Bash','Python'],gap:['Azure'],level:"3 years' experience"},
+ {id:'papaya',cid:'papaya',co:'Papaya Insurtech',ini:'P',hue:1,title:'DevOps Engineer (AWS, Kubernetes, CI/CD)',mode:'At office',place:'At office · '+HCM,district:HCM,sources:['ITviec'],age:'5 h',ageDays:0,match:84,reasons:[['+','Kubernetes'],['+','CI/CD'],['−','AWS gap']],have:['Kubernetes','CI/CD'],gap:['AWS']},
+ {id:'vng',cid:'vng',co:'VNG Corporation',ini:'V',hue:2,title:'DevOps Engineer (Middle to Senior)',mode:'At office',place:'At office · '+HCM,district:HCM,sources:['ITviec'],age:'1 day',ageDays:1,match:81,reasons:[['+','Middle level'],['+','Kubernetes'],['−','English']],have:['Kubernetes'],gap:[],level:'Middle to Senior',english:'English required'},
+ {id:'endava',cid:'endava',co:'Endava Việt Nam',ini:'E',hue:3,title:'Cloud Native DevOps Engineer',mode:'Hybrid',place:'Hybrid · '+HCM,district:HCM,sources:['ITviec'],age:'7 days',ageDays:7,match:86,reasons:[['+','GitLab'],['+','Docker'],['+','Kubernetes']],have:['GitLab CI','Docker','Kubernetes'],gap:[]},
+ {id:'concung',cid:'concung',co:'Con Cưng',ini:'C',hue:5,title:'DevOps Engineer',mode:'At office',place:'At office · '+HCM,district:HCM,sources:['ITviec'],age:'9 days',ageDays:9,match:88,reasons:[['+','Helm'],['+','GitLab'],['+','Jenkins']],have:['Helm','GitLab CI','Jenkins'],gap:[]},
+ {id:'cubicstack',cid:'cubicstack',co:'CUBICSTACK SOLUTIONS',ini:'C',hue:6,title:'DevOps Engineer (AWS, Cloud)',mode:'At office',place:'At office · '+HCM,district:HCM,sources:['ITviec'],age:'11 days',ageDays:11,match:74,reasons:[['+','Terraform'],['+','Linux'],['−','AWS gap']],have:['Terraform','Linux'],gap:['AWS']},
+ {id:'gpet',cid:'gpet',co:'CÔNG TY TNHH THƯƠNG MẠI DỊCH VỤ GPET',ini:'G',hue:1,title:'DevOps Engineer (Linux, Kubernetes, Docker, Jenkins)',mode:'Hybrid',place:'Hybrid · '+HCM,district:HCM,sources:['ITviec'],age:'8 days',ageDays:8,match:85,reasons:[['+','Jenkins'],['+','Docker'],['+','Linux']],have:['Linux','Kubernetes','Docker','Jenkins'],gap:[]},
+ {id:'timo',cid:'timo',co:'Timo',ini:'T',hue:2,title:'Senior DevOps Engineer',mode:'Hybrid',place:'Hybrid · '+HCM,district:HCM,sources:['ITviec'],age:'4 days',ageDays:4,match:62,reasons:[['+','CI/CD'],['−','Senior']],have:['CI/CD'],gap:[],level:'Senior'},
+ {id:'vinsmart',cid:'vinsmart',co:'VinSmart Future',ini:'V',hue:3,title:'Senior DevOps Engineer',mode:'At office',place:'At office · Ha Noi – '+HCM,district:'Ha Noi – '+HCM,sources:['ITviec'],age:'2 days',ageDays:2,match:66,reasons:[['+','Training & certificates'],['−','Senior'],['−','Azure gap']],have:[],gap:['Azure'],level:'Senior',benefits:['Training and certificates']},
+ {id:'acb',cid:'acb',co:'Ngân Hàng Á Châu, ACB',ini:'A',hue:4,title:'TMO – DevOps Engineer Senior Manager (DevSecOps, AWS)',mode:'At office',place:'At office · '+HCM,district:HCM,sources:['ITviec'],age:'8 days',ageDays:8,match:41,reasons:[['−','Manager level'],['−','AWS gap']],have:[],gap:['AWS'],level:'Senior Manager'},
+ {id:'reclub',cid:'reclub',co:'Reclub Vietnam',ini:'R',hue:5,title:'Senior DevOps & Infrastructure Engineer',mode:'At office',place:'At office · '+HCM,district:HCM,sources:['ITviec'],age:'10 h',ageDays:0,match:64,reasons:[['+','Kubernetes'],['−','Senior']],have:['Kubernetes'],gap:[],level:'Senior'},
+ {id:'codertrove',cid:'codertrove',co:'Coder Trove',ini:'C',hue:6,title:'DevOps Lead',mode:'At office',place:'At office · '+HCM,district:HCM,sources:['ITviec'],age:'7 days',ageDays:7,match:45,reasons:[['−','Lead'],['−','Fluent English']],have:[],gap:[],level:'Lead',english:'Fluent English'},
+ {id:'urbox',cid:'urbox',co:'UrBox',ini:'U',hue:2,title:'DevOps Engineer',mode:'Onsite',place:'Onsite · '+HCM,district:HCM,sources:['ITviec'],age:'12 days',ageDays:12,match:91,reasons:[['+','Helm'],['+','Terraform'],['−','EKS gap']],have:['Kubernetes','Helm','Terraform','Cloudflare','GitLab CI','Prometheus'],gap:['EKS','ArgoCD','ELK'],status:'Interested',noInbox:true},
+ {id:'vexere',cid:'vexere',co:'Vexere',ini:'V',hue:1,title:'DevOps Engineer',mode:'Hybrid',place:'Hybrid · 2 days in office',district:HCM,sources:['ITviec'],age:'16 days',ageDays:16,match:79,reasons:[['+','Hybrid, 2 days in office']],have:[],gap:[],status:'Applied',noInbox:true}
+];
+const CO={tinhvan:{web:'tinhvan.com',cp:'Found · checked 2 h ago',st:'ok'},papaya:{web:'papaya.asia',cp:'Page needs a browser, skipped',st:'warn'},vng:{web:'vng.com.vn',cp:'Found · checked 1 h ago',st:'ok'},endava:{web:'endava.com',cp:'Found · checked 3 h ago',st:'ok'},concung:{web:'concung.com',cp:'Found · checked 2 h ago',st:'ok'},cubicstack:{cp:'No career page found',st:'mute'},gpet:{cp:'No career page found',st:'mute'},timo:{web:'timo.vn',cp:'Found · checked 4 h ago',st:'ok'},vinsmart:{cp:'Page needs a browser, skipped',st:'warn'},acb:{web:'acb.com.vn',cp:'Found · checked 2 h ago',st:'ok'},reclub:{cp:'Page needs a browser, skipped',st:'warn'},codertrove:{cp:'No career page found',st:'mute'},urbox:{web:'urbox.vn',cp:'Found · checked 1 h ago',st:'ok'},vexere:{web:'vexere.com',cp:'Page needs a browser, skipped',st:'warn'}};
+const SRC={ITviec:'https://itviec.com/it-jobs/devops',LinkedIn:'https://www.linkedin.com/jobs/',"Tech Hot Jobs":'https://www.linkedin.com/jobs/',TopCV:'https://www.topcv.vn',TopDev:'https://topdev.vn',VietnamWorks:'https://www.vietnamworks.com'};
+const STC={New:'var(--accent)',Interested:'var(--info)',Applied:'var(--info)',Interviewing:'var(--warn)',Offer:'var(--ok)',Skipped:'var(--ink3)',Closed:'var(--ink3)'};
+const STATUSES=['New','Interested','Applied','Interviewing','Offer','Skipped','Closed'];
+const W0={salary:20,stack:40,level:20,english:10,benefits:10};
+const FILTERS=[{k:'match',l:'Match',o:['Any','80 or higher','70 or higher','Below 70']},{k:'salary',l:'Salary',o:['Any','Shown','Not shown']},{k:'stack',l:'Stack',o:['Any','Kubernetes','Docker','Jenkins','GitLab CI','Terraform','Helm']},{k:'mode',l:'Work mode',o:['Any','At office','Hybrid','Onsite','Remote']},{k:'district',l:'District',o:['Any','District 7',HCM,'Ha Noi']},{k:'source',l:'Source',o:['Any','ITviec','LinkedIn','Tech Hot Jobs','TopCV','TopDev','VietnamWorks']},{k:'status',l:'Status',o:['Any',...STATUSES]},{k:'open',l:'Open or closed',o:['Any','Open','Closed']}];
+const F0={match:'Any',salary:'Any',stack:'Any',mode:'Any',district:'Any',source:'Any',status:'Any',open:'Any'};
+const SAVED=[{n:'Top matches',f:{match:'80 or higher',open:'Open'}},{n:'Hybrid',f:{mode:'Hybrid'}},{n:'Kubernetes, open',f:{stack:'Kubernetes',open:'Open'}},{n:'Salary shown, open',f:{salary:'Shown',open:'Open'}}];
+const NAV=[['Inbox','#/inbox','#i-inbox','inbox'],['All postings','#/postings','#i-list','postings'],['Pipeline','#/pipeline','#i-pipe','pipeline'],['Companies','#/companies','#i-co','companies'],['Overview','#/overview','#i-chart','overview'],['Sources','#/sources','#i-src','sources'],['Settings','#/settings/scoring','#i-set','settings']];
+const TABS=[['scoring','Scoring'],['search','Search'],['watchlist','Watchlist'],['digest','Digest'],['password','Password']];
+const SOURCES=[
+ {id:'itviec',name:'ITviec',kind:'Job board',st:'Healthy',last:'06:12',found:'20',errors:0,note:'salary hidden without sign-in'},
+ {id:'topcv',name:'TopCV',kind:'Job board',st:'Healthy',last:'06:10',found:'6',errors:0},
+ {id:'topdev',name:'TopDev',kind:'Job board',st:'Degraded',last:'06:08',found:'0',errors:2,error:'Returned no postings twice in a row.',error2:'Last run with postings: 21 Oct, 06:05. The page layout may have changed.'},
+ {id:'vnw',name:'VietnamWorks',kind:'Job board',st:'Healthy',last:'06:11',found:'4',errors:0},
+ {id:'linkedin',name:'LinkedIn',kind:'Job board',st:'Healthy',last:'06:04',found:'1',errors:0},
+ {id:'thj',name:'Tech Hot Jobs',kind:'Job board',st:'Healthy',last:'05:40',found:'1',errors:0,note:'mostly reposts'},
+ {id:'cp',name:'Career pages',kind:'Company career page',st:'Healthy',last:'06:12',found:'37 changed',errors:0,note:'1,201 pages checked'},
+ {id:'cpb',name:'Career pages that need a browser',kind:'Company career page',st:'Blocked',last:'06:12',found:'0',errors:83,error:'83 pages need a browser to load their postings and were skipped.',error2:'These companies are still covered when they post on a job board.'}
+];
+const tile=h=>({tileBg:`var(--t${h})`,tileInk:`var(--t${h}i)`});
+const parse=h=>{const s=(h||'').replace(/^#\/?/,'').split('/');const n=s[0]||'inbox';
+ if(n==='jobs')return{name:'posting',id:s[1]||'tinhvan'};
+ if(n==='companies'&&s[1])return{name:'company',id:s[1]};
+ if(n==='settings')return{name:'settings',tab:TABS.some(t=>t[0]===s[1])?s[1]:'scoring'};
+ return{name:['inbox','postings','pipeline','companies','overview','sources','signin'].includes(n)?n:'inbox'};};
+const DESC="Xây dựng, triển khai và vận hành hệ thống CI/CD phục vụ quá trình phát triển phần mềm. Quản lý và tối ưu hạ tầng trên cloud (ưu tiên Azure). Triển khai, giám sát và duy trì hệ thống (Docker, Kubernetes). Thiết lập và quản lý pipeline trên GitHub / GitHub Actions.";
+const KW=/(CI\/CD|Docker|Kubernetes|GitHub Actions|GitHub)/g;
+
+class Component extends DCLogic {
+  state={route:parse(location.hash),prev:null,status:{},notes:{urbox:'Next: tailor CV around EKS and ArgoCD',vexere:'Next: follow up with the recruiter on 27 Oct'},days:{urbox:3,vexere:6},sel:'tinhvan',hover:null,leaving:null,seen:{tinhvan:1},sort:'match',toast:null,pal:false,pq:'',pi:0,dlg:null,note:'',f:{...F0},q:'',menu:null,drag:null,over:null,showClosed:false,watch:{urbox:1,vexere:1,endava:1,vng:1},watchOnly:false,open:{topdev:1},checking:null,w:{...W0},minD:70,minA:85,pw:'',pwErr:false,pwLoad:false,themeO:null,kw:['DevOps','SRE','Platform Engineer','Cloud Engineer'],modes:{Remote:true,Hybrid:true,Onsite:true},kwDraft:'',digest:'07:30',instant:true,pass:['','',''],passErr:false,watchDraft:''};
+  searchRef=React.createRef(); palRef=React.createRef(); noteRef=React.createRef();
+  componentDidMount(){
+    this.onKey=e=>this.key(e); this.onHash=()=>this.setState(s=>({route:parse(location.hash),prev:s.route,pal:false,menu:null}));
+    window.addEventListener('keydown',this.onKey); window.addEventListener('hashchange',this.onHash);
+    this.onResize=()=>{const w=window.innerWidth; if(w!==this.state.vw) this.setState({vw:w});}; window.addEventListener('resize',this.onResize); this.onResize();
+  }
+  componentWillUnmount(){window.removeEventListener('resize',this.onResize);window.removeEventListener('keydown',this.onKey);window.removeEventListener('hashchange',this.onHash);clearTimeout(this.tt);}
+  go(h){ if(location.hash===h) return; location.hash=h; }
+  stOf(p){return this.state.status[p.id]||p.status||(p.closed&&p.noInbox?'Closed':'New');}
+  inbox(){ if((this.props.inboxState||'live')==='empty') return [];
+    const l=P.filter(p=>!p.noInbox&&this.stOf(p)==='New');
+    return this.state.sort==='match'?l.sort((a,b)=>b.match-a.match):l.sort((a,b)=>a.ageDays-b.ageDays||b.match-a.match);}
+  sc(m){return m>=this.state.minA?'var(--acc-ink)':'var(--ink)';}
+  sal(p){return p.salary?{salary:p.salary,salC:'var(--ink)',salW:500}:{salary:'Salary not shown',salC:'var(--ink3)',salW:400};}
+  reasons(p){return p.reasons.map(([s,t])=>({sign:s,t,col:s==='+'?'var(--ok)':'var(--warn)'}));}
+  srcText(p){return (p.sources.length>1?p.sources.length+' sources':p.sources[0])+(p.repost?' · Reposted':'');}
+  current(){const r=this.state.route; if(r.name==='posting') return P.find(p=>p.id===r.id)||P[0]; const l=this.inbox(); return l.find(p=>p.id===this.state.sel)||l[0]||null;}
+  breakdown(p){
+    if(p.id==='tinhvan') return [{k:'stack',label:'Stack',note:'6 of 7 named skills in stack',w:32},{k:'salary',label:'Salary',note:'23–27M VND, inside target range',w:16},{k:'level',label:'Level',note:"3 years' experience",w:14},{k:'benefits',label:'Benefits',note:'Certification fees, training abroad',w:14},{k:'english',label:'English',note:'Needed only for training abroad',w:8},{k:'adj',label:'Azure preferred',note:'not in stack',w:-6}];
+    const adj=p.reasons.filter(r=>r[0]==='−').map(r=>({k:'adj',label:r[1],note:'lowers match',w:-8}));
+    const rest=p.match-adj.reduce((a,r)=>a+r.w,0);
+    const ben=p.benefits?6:0, st=Math.round((rest-ben)*.55), lv=Math.round((rest-ben)*.28), en=rest-ben-st-lv;
+    const out=[{k:'stack',label:'Stack',note:p.have.length?p.have.length+' named skills in stack':'No skills named',w:st},{k:'level',label:'Level',note:p.level||'Level fits',w:lv},{k:'english',label:'English',note:p.english||'No requirement listed',w:en},{k:'salary',label:'Salary',note:'Salary not shown',w:0}];
+    if(ben) out.push({k:'benefits',label:'Benefits',note:'Training and certificates',w:ben});
+    return out.concat(adj);
+  }
+  rescore(p){const W=this.state.w; let s=0; this.breakdown(p).forEach(r=>{s+= r.k==='adj'?r.w:(W0[r.k]?r.w*W[r.k]/W0[r.k]:r.w);}); return Math.max(0,Math.min(100,Math.round(s)));}
+  toastArm(t){clearTimeout(this.tt);this.setState({toast:t});this.tt=setTimeout(()=>this.setState({toast:null}),5000);}
+  act(st,id,note){
+    const p=id?P.find(x=>x.id===id):this.current(); if(!p) return;
+    const label={Interested:'Marked Interested',Skipped:'Skipped',Applied:'Marked Applied'}[st];
+    const prev=this.state.status[p.id];
+    const commit=()=>this.setState(s=>{const l=this.inbox(); const i=l.findIndex(x=>x.id===p.id); const rem=l.filter(x=>x.id!==p.id); const nx=rem[Math.min(Math.max(i,0),rem.length-1)];
+      const notes=note?{...s.notes,[p.id]:note}:s.notes; return {status:{...s.status,[p.id]:st},notes,days:{...s.days,[p.id]:0},leaving:null,sel:s.route.name==='posting'?s.sel:(nx?nx.id:null),seen:nx?{...s.seen,[nx.id]:1}:s.seen};});
+    this.toastArm({text:label,id:p.id,prev});
+    if(this.state.route.name==='inbox'){this.setState({leaving:p.id,hover:null});setTimeout(commit,180);} else commit();
+  }
+  undo(){const t=this.state.toast; if(!t) return; this.setState(s=>{const status={...s.status}; if(t.prev) status[t.id]=t.prev; else delete status[t.id]; return {status,sel:t.id,toast:null};});}
+  openApplied(id){const p=id?P.find(x=>x.id===id):this.current(); if(!p) return; this.setState({dlg:p.id,note:''}); setTimeout(()=>this.noteRef.current&&this.noteRef.current.focus(),30);}
+  move(d){const l=this.inbox(); if(!l.length) return; const i=Math.max(0,l.findIndex(p=>p.id===this.state.sel)); const n=l[Math.min(l.length-1,Math.max(0,i+d))]; this.setState(s=>({sel:n.id,seen:{...s.seen,[n.id]:1}}));}
+  openSrc(){const p=this.current(); if(p) window.open(SRC[p.sources[0]],'_blank','noopener');}
+  openPal(){this.setState({pal:true,pq:'',pi:0,menu:null}); setTimeout(()=>this.palRef.current&&this.palRef.current.focus(),30);}
+  openSearch(){this.go('#/postings'); setTimeout(()=>this.searchRef.current&&this.searchRef.current.focus(),60);}
+  theme(){return this.state.themeO||this.props.theme||'light';}
+  key(e){
+    const t=e.target, typing=t&&(t.tagName==='INPUT'||t.tagName==='TEXTAREA');
+    if((e.metaKey||e.ctrlKey)&&e.key.toLowerCase()==='k'){e.preventDefault(); this.state.pal?this.setState({pal:false}):this.openPal(); return;}
+    if(e.key==='Escape'){this.setState({pal:false,dlg:null,menu:null}); return;}
+    if(typing||this.state.pal||this.state.dlg||e.metaKey||e.ctrlKey||e.altKey) return;
+    const r=this.state.route.name;
+    if(e.key==='/'){e.preventDefault(); this.openSearch(); return;}
+    if(r!=='inbox'&&r!=='posting') return;
+    const m={j:()=>r==='inbox'&&this.move(1),k:()=>r==='inbox'&&this.move(-1),i:()=>this.act('Interested'),s:()=>this.act('Skipped'),a:()=>this.openApplied(),o:()=>this.openSrc()}[e.key];
+    if(m){e.preventDefault(); m();}
+  }
+  palList(){
+    const q=this.state.pq.trim().toLowerCase(), out=[], r=this.state.route.name, cur=this.current();
+    const add=(g,label,hint,run,icon)=>{if(q&&!label.toLowerCase().includes(q))return; out.push({g,label,hint,run,icon});};
+    if(cur&&(r==='inbox'||r==='posting')){add('Current posting','Mark Interested','i',()=>this.act('Interested'),'#i-mark');add('Current posting','Skip','s',()=>this.act('Skipped'),'#i-x');add('Current posting','Mark Applied','a',()=>this.openApplied(),'#i-send');add('Current posting','Open on '+cur.sources[0],'o',()=>this.openSrc(),'#i-ext');}
+    NAV.forEach(n=>add('Go to',n[0],'',()=>this.go(n[1]),n[2]));
+    if(q) P.filter(p=>(p.title+' '+p.co).toLowerCase().includes(q)).slice(0,5).forEach(p=>out.push({g:'Postings',label:p.title+' · '+p.co,hint:String(p.match),run:()=>this.go('#/jobs/'+p.id),icon:'#i-list'}));
+    add('Preferences',this.theme()==='dark'?'Switch to light theme':'Switch to dark theme','',()=>this.setState({themeO:this.theme()==='dark'?'light':'dark'}),'#i-moon');
+    return out;
+  }
+  passF(p,f){const F=f||this.state.f, s=this.stOf(p);
+    if(this.state.q&&!(p.title+' '+p.co).toLowerCase().includes(this.state.q.toLowerCase())) return false;
+    if(F.match==='80 or higher'&&p.match<80||F.match==='70 or higher'&&p.match<70||F.match==='Below 70'&&p.match>=70) return false;
+    if(F.salary==='Shown'&&!p.salary||F.salary==='Not shown'&&p.salary) return false;
+    if(F.stack!=='Any'&&!p.have.concat(p.gap).includes(F.stack)) return false;
+    if(F.mode!=='Any'&&p.mode!==F.mode) return false;
+    if(F.district!=='Any'&&!p.district.includes(F.district)) return false;
+    if(F.source!=='Any'&&!p.sources.includes(F.source)) return false;
+    if(F.status!=='Any'&&s!==F.status) return false;
+    if(F.open==='Open'&&p.closed||F.open==='Closed'&&!p.closed) return false;
+    return true;}
+  detail(p){
+    const isT=p.id==='tinhvan', bd=this.breakdown(p), co=CO[p.cid]||{};
+    const facts=isT?[{i:'#i-cash',t:'23–27M VND + onsite allowance',s:'13th-month salary + project bonus up to 2 months'},{i:'#i-level',t:"3 years' experience",s:'Middle level'},{i:'#i-pin',t:'Onsite at Phu My Hung Tower, District 7'},{i:'#i-globe',t:'English or Japanese needed for work and training abroad'}]
+      :[{i:'#i-cash',t:'Salary not shown',s:p.sources[0]==='ITviec'?'ITviec hides salary without sign-in':''},p.level?{i:'#i-level',t:p.level}:null,{i:'#i-pin',t:p.place},p.english?{i:'#i-globe',t:p.english}:null].filter(Boolean);
+    const benefits=isT?['100% of IT certification exam fees','One salary step up on certification, plus a 3–10M VND bonus','50% of external courses','Work and training in Japan or Singapore for candidates with Japanese or English']:(p.benefits||[]);
+    const max=Math.max(...bd.map(r=>Math.abs(r.w)),1);
+    const desc=isT?DESC.split(KW).filter(Boolean).map(t=>{const m=/^(CI\/CD|Docker|Kubernetes|GitHub Actions|GitHub)$/.test(t);return {t,w:m?600:400,bg:m?'var(--sunk)':'transparent',pad:m?'1px 3px':'0'};}):[];
+    return {...tile(p.hue),ini:p.ini,title:p.title,co:p.co,coHref:'#/companies/'+p.cid,match:p.match,scoreC:this.sc(p.match),
+      seen:isT?'First seen 24 Apr · Reposted 23 Oct':(this.srcText(p)+' · Seen '+fmt(p.ageDays)),
+      actI:()=>this.act('Interested',p.id),actS:()=>this.act('Skipped',p.id),actA:()=>this.openApplied(p.id),
+      srcHref:SRC[p.sources[0]],srcLabel:'Open on '+p.sources[0],
+      closed:!!p.closed,closedText:'Closed at source on LinkedIn. Still on Tech Hot Jobs as a repost; actions still work.',
+      facts:facts.map(f=>({...f,hasS:!!f.s,w:f.i==='#i-cash'&&!isT?400:500})),benefits,hasBenefits:benefits.length>0,
+      hasStack:p.have.length+p.gap.length>0,hasHave:p.have.length>0,hasGap:p.gap.length>0,have:p.have,gap:p.gap,
+      stackLine:`${p.have.length} of ${p.have.length+p.gap.length} skills named in the posting are in the current stack.`,
+      why:bd.map(r=>({label:r.label,note:r.note,wt:(r.w>0?'+':r.w<0?'−':'')+Math.abs(r.w),col:r.w<0?'var(--warn)':r.w===0?'var(--ink3)':'var(--ink)',barW:(Math.abs(r.w)/max*100)+'%',barC:r.w<0?'var(--warn)':'var(--c1)'})),
+      hasDesc:isT,desc,descLine:isT?'Verbatim, in Vietnamese. Matched skills are emphasised.':'The full description is on '+p.sources[0]+'. Press o to open it.',
+      careers:'Career page: '+(co.cp||'No career page found'),hasPast:isT,past:isT?[{date:'24 Apr',t:'DevOps Engineer (3+ yrs) · LinkedIn',sal:'23–27M VND'},{date:'23 Oct',t:'Reposted on Tech Hot Jobs',sal:'23–27M VND'}]:[],
+      srcLine:p.sources.length>1?'Merged from '+p.sources.length+' sources.':'Found on one source.',
+      sources:isT?[{name:'LinkedIn',note:'First seen 24 Apr · closed',href:SRC.LinkedIn},{name:'Tech Hot Jobs',note:'Repost seen 23 Oct, 05:40',href:SRC['Tech Hot Jobs']}]:p.sources.map(s=>({name:s,note:'Seen '+fmt(p.ageDays),href:SRC[s]}))};
+  }
+  renderVals(){
+    const S=this.state, r=S.route, rn=r.name, theme=this.theme(), inboxState=this.props.inboxState||'live';
+    const inbox=this.inbox(), cur=this.current();
+    const vw=S.vw||1440, compact=vw<1180, mainW=vw-(compact?64:232)-24;
+    const nav=NAV.map(([label,href,sym,key])=>{const on=rn===key||(key==='companies'&&rn==='company')||(key==='inbox'&&rn==='posting'&&S.prev&&S.prev.name==='inbox');
+      return {label,href,sym,showCount:key==='inbox'&&inbox.length>0&&!compact,current:on?'page':undefined,color:on?'var(--ink)':'var(--ink2)',bg:on?'var(--navsel)':'transparent',shadow:on?'var(--sh1)':'none',icon:on?'var(--accent)':'var(--ink3)',bar:on?1:0,hasCount:key==='inbox'&&inbox.length>0,count:inbox.length};});
+    const rows=inbox.map(p=>{const sel=p.id===(cur&&cur.id), hov=S.hover===p.id, lv=S.leaving===p.id;
+      return {...tile(p.hue),...this.sal(p),id:p.id,ini:p.ini,title:p.title,meta:p.co+' · '+p.place+' · '+this.srcText(p),reasons:this.reasons(p),match:p.match,scoreC:this.sc(p.match),age:p.age,
+        unread:!S.seen[p.id],titleW:S.seen[p.id]?500:600,hovered:hov&&!lv,
+        bg:sel?'var(--raised)':hov?'var(--hover)':'transparent',shadow:sel?'var(--sh15)':'none',z:sel?2:1,radius:sel?'10px':'0',bar:sel?1:0,
+        tx:lv?'translateX(-24px)':sel?'translateY(-1px)':'none',op:lv?0:1,
+        open:()=>this.setState(s=>({sel:p.id,seen:{...s.seen,[p.id]:1}})),enter:()=>this.setState({hover:p.id}),leave:()=>this.setState(s=>s.hover===p.id?{hover:null}:null),
+        actI:e=>{e.stopPropagation();this.act('Interested',p.id);},actS:e=>{e.stopPropagation();this.act('Skipped',p.id);},actA:e=>{e.stopPropagation();this.openApplied(p.id);}};});
+    const isLoading=rn==='inbox'&&inboxState==='loading', isEmpty=rn==='inbox'&&!isLoading&&inbox.length===0;
+    const dP=rn==='posting'?cur:(isLoading||isEmpty?null:cur);
+    const d=dP?this.detail(dP):{facts:[],benefits:[],have:[],gap:[],why:[],desc:[],past:[],sources:[]};
+    const backTo=S.prev&&S.prev.name!=='posting'?S.prev:{name:'inbox'};
+    const backMap={inbox:['Back to Inbox','#/inbox'],postings:['Back to All postings','#/postings'],pipeline:['Back to Pipeline','#/pipeline'],company:['Back to company','#/companies/'+backTo.id],companies:['Back to Companies','#/companies'],overview:['Back to Overview','#/overview']};
+    const back=backMap[backTo.name]||backMap.inbox;
+    // all postings
+    const allList=P.filter(p=>this.passF(p)).sort((a,b)=>b.match-a.match);
+    const anyFilter=Object.keys(F0).some(k=>S.f[k]!==F0[k])||!!S.q;
+    const allRows=allList.map(p=>({...tile(p.hue),...this.sal(p),href:'#/jobs/'+p.id,ini:p.ini,title:p.title,co:p.co,reasons:this.reasons(p),match:p.match,scoreC:this.sc(p.match),place:p.place,src:this.srcText(p),age:p.age,status:this.stOf(p)+(p.closed?' · Closed':''),stC:p.closed?'var(--ink3)':STC[this.stOf(p)]}));
+    const filters=FILTERS.map(f=>{const v=S.f[f.k], on=v!=='Any'; return {text:on?f.l+': '+v:f.l,border:on?'var(--ctl)':'var(--line2)',bg:on?'var(--hover)':'var(--sheet)',color:on?'var(--ink)':'var(--ink2)',
+      open:e=>{const b=e.currentTarget.getBoundingClientRect(); this.setState({menu:{k:f.k,x:b.left,y:b.bottom+4}});}};});
+    const saved=SAVED.map(s=>{const on=Object.keys(F0).every(k=>(s.f[k]||'Any')===S.f[k]); return {n:s.n,on,border:on?'var(--ink)':'var(--line2)',bg:on?'var(--hover)':'var(--sheet)',color:on?'var(--ink)':'var(--ink2)',pick:()=>this.setState({f:on?{...F0}:{...F0,...s.f}})};});
+    const mf=S.menu&&FILTERS.find(f=>f.k===S.menu.k);
+    const menuItems=mf?mf.o.map(o=>({label:o,on:S.f[mf.k]===o,op:S.f[mf.k]===o?1:0,pick:()=>this.setState(s=>({f:{...s.f,[mf.k]:o},menu:null}))})):[];
+    // pipeline
+    const cols=['Interested','Applied','Interviewing','Offer'].concat(S.showClosed?['Skipped','Closed']:[]);
+    const columns=cols.map(c=>{const items=P.filter(p=>this.stOf(p)===c);
+      return {name:c,count:items.length,dot:STC[c],bg:S.over===c&&S.drag?'var(--hover)':'transparent',empty:!items.length,emptyText:'No postings in this stage.',
+        over:e=>{e.preventDefault(); if(S.over!==c) this.setState({over:c});},
+        drop:e=>{e.preventDefault(); const id=S.drag; if(id&&this.stOf(P.find(p=>p.id===id))!==c) this.setState(s=>({status:{...s.status,[id]:c},days:{...s.days,[id]:0}})); this.setState({drag:null,over:null}); if(id) this.toastArm({text:'Moved to '+c,id,prev:S.status[id]});},
+        cards:items.map(p=>{const dg=S.drag===p.id, dd=S.days[p.id]||0;
+          return {...tile(p.hue),...this.sal(p),href:'#/jobs/'+p.id,ini:p.ini,co:p.co,title:p.title,next:S.notes[p.id],hasNext:!!S.notes[p.id],days:dd===0?'Moved here today':dd+' days in stage',
+            shadow:dg?'var(--sh2)':'none',tx:dg?'translateY(-2px)':'none',start:e=>{e.dataTransfer.effectAllowed='move'; try{e.dataTransfer.setData('text/plain',p.id);}catch(_){} this.setState({drag:p.id});},end:()=>this.setState({drag:null,over:null})};})};});
+    // companies
+    const byCo={}; P.forEach(p=>{(byCo[p.cid]=byCo[p.cid]||[]).push(p);});
+    const coAll=Object.keys(byCo).map(cid=>{const ps=byCo[cid], p=ps[0], c=CO[cid]||{}, open=ps.filter(x=>!x.closed).length, last=Math.min(...ps.map(x=>x.ageDays));
+      return {cid,...tile(p.hue),ini:p.ini,name:p.co,href:'#/companies/'+cid,district:p.district,open,last:fmt(last),lastD:last,cp:c.cp||'No career page found',cpC:c.st==='ok'?'var(--ok)':c.st==='warn'?'var(--warn)':'var(--ink3)',watched:!!S.watch[cid],star:S.watch[cid]?'#i-starf':'#i-star',starC:S.watch[cid]?'var(--acc-ink)':'var(--ink3)',toggle:()=>this.setState(s=>({watch:{...s.watch,[cid]:!s.watch[cid]}})),best:Math.max(...ps.map(x=>x.match))};});
+    const coRows=coAll.filter(c=>c.open>0&&(!S.watchOnly||c.watched)).sort((a,b)=>a.lastD-b.lastD);
+    const cid=r.id||'tinhvan', cps=byCo[cid]||byCo.tinhvan, c0=coAll.find(c=>c.cid===cid)||coAll[0], cc=CO[cid]||{};
+    const span=(new Date(2026,9,31)-new Date(2026,3,1));
+    const xOf=dd=>((dOf(dd)-new Date(2026,3,1))/span*100).toFixed(2)+'%';
+    const cv={...c0,web:cc.web,webHref:'https://'+(cc.web||''),hasWeb:!!cc.web,swBg:c0.watched?'var(--btn)':'var(--line2)',swTx:c0.watched?'translateX(14px)':'none',
+      open:cps.filter(p=>!p.closed).map(p=>({...this.sal(p),href:'#/jobs/'+p.id,title:p.title,match:p.match,scoreC:this.sc(p.match),age:p.age})),
+      openLine:cps.some(p=>!p.closed)?'Postings still live on at least one source.':'No open postings right now.',
+      points:cid==='tinhvan'?[{x:xOf(182),date:'24 Apr',t:'DevOps Engineer (3+ yrs)',src:'LinkedIn',sal:'23–27M VND',salC:'var(--ink)'},{x:xOf(0),date:'23 Oct',t:'DevOps Engineer (3+ yrs) · repost',src:'Tech Hot Jobs',sal:'23–27M VND',salC:'var(--ink)'}]
+        :cps.map(p=>({x:xOf(p.ageDays),date:fmt(p.ageDays),t:p.title,src:p.sources.join(', '),sal:p.salary||'Salary not shown',salC:p.salary?'var(--ink)':'var(--ink3)'}))};
+    const months=['Apr','May','Jun','Jul','Aug','Sep','Oct'].map((l,i)=>({l,x:((new Date(2026,3+i,15)-new Date(2026,3,1))/span*100).toFixed(2)+'%'}));
+    // overview
+    const per=[]; for(let i=29;i>=0;i--){const n=P.filter(p=>p.ageDays===i).length; per.push({n,h:(n/3*100)+'%',tip:fmt(i)+' · '+n+(n===1?' posting':' postings'),x:[29,22,15,8,0].includes(i)?fmt(i):''});}
+    const yTicks=[0,1,2,3].map(v=>({l:String(v),y:(v/3*100)+'%',c:v===0?'var(--ctl)':'var(--line)'}));
+    const bs=[['ITviec',20],['TopCV',6],['VietnamWorks',4],['LinkedIn',1],['Tech Hot Jobs',1],['TopDev',0]];
+    const bySource=bs.map(([name,n])=>({name,n,w:(n/20*100)+'%'}));
+    const sk={}; P.forEach(p=>p.have.concat(p.gap).forEach(s=>{sk[s]=(sk[s]||0)+1;}));
+    const skl=Object.entries(sk).sort((a,b)=>b[1]-a[1]||a[0].localeCompare(b[0])).slice(0,10), skMax=skl[0][1];
+    const skills=skl.map(([name,n])=>({name,n,w:(n/skMax*100)+'%',c:inStack(name)?'var(--c1)':'var(--c3)'}));
+    const pub=P.filter(p=>p.salary).length;
+    const topCos=coAll.filter(c=>c.open>0).sort((a,b)=>b.open-a.open||b.best-a.best).slice(0,6).map(c=>({name:c.name,href:c.href,open:c.open,match:c.best,scoreC:this.sc(c.best)}));
+    const focal=inbox.filter(p=>p.match>=S.minD).length;
+    // sources
+    const srcRows=SOURCES.map(s=>{const can=!!s.error, open=can&&!!S.open[s.id], chk=S.checking===s.id;
+      return {...s,status:s.st,stC:s.st==='Healthy'?'var(--ok)':s.st==='Degraded'?'var(--warn)':'var(--bad)',hasNote:!!s.note,errors:s.errors?String(s.errors):'None',errC:s.errors?'var(--ink)':'var(--ink3)',canOpen:can,noToggle:!can,open,cursor:can?'pointer':'default',chev:open?'rotate(90deg)':'none',
+        toggle:()=>can&&this.setState(st=>({open:{...st.open,[s.id]:!st.open[s.id]}})),checking:chk,checkLabel:chk?'Checking':'Check now',
+        check:()=>{this.setState({checking:s.id}); setTimeout(()=>{this.setState({checking:null}); this.toastArm({text:s.name+': still no postings'});},1400);}};});
+    const usage=[{label:'Pages checked today',n:'1,284',of:'3,000',w:'42.8%',note:'Last checked 06:12 · 37 pages changed since yesterday'},{label:'Extractions today',n:'214',of:'1,000',w:'21.4%',note:'One per new or changed posting · resets at 00:00'}];
+    // settings
+    const tab=r.tab||'scoring';
+    const today=P.filter(p=>!p.noInbox).map(p=>({p,s:this.rescore(p)})).sort((a,b)=>b.s-a.s);
+    const passD=today.filter(x=>x.s>=S.minD).length, passA=today.filter(x=>x.s>=S.minA).length;
+    const WL={salary:['Salary','Published salary against the target range'],stack:['Stack','Skills named in the posting that are in the stack'],level:['Level','Seniority and years of experience asked'],english:['English','Required English level'],benefits:['Benefits','Certification sponsorship, onsite abroad, training']};
+    const weights=Object.keys(W0).map(k=>({label:WL[k][0],note:WL[k][1],v:S.w[k],set:e=>{const v=+e.target.value; this.setState(s=>({w:{...s.w,[k]:v}}));}}));
+    const thresholds=[{label:'Digest minimum',v:S.minD,set:e=>this.setState({minD:+e.target.value})},{label:'Instant alert minimum',v:S.minA,set:e=>this.setState({minA:+e.target.value})}];
+    const preview=today.map(({p,s})=>({co:p.co,title:p.title,s,scoreC:s>=S.minA?'var(--acc-ink)':'var(--ink)',tag:s>=S.minA?'Instant alert':s>=S.minD?'Digest':'Below minimum',op:s>=S.minD?1:.6}));
+    const sw=on=>({bg:on?'var(--btn)':'var(--line2)',tx:on?'translateX(14px)':'none'});
+    const pe=S.passErr;
+    const pal=S.pal?this.palList():[];
+    const palItems=pal.map((it,i)=>({...it,icon:it.icon||'#i-chev',first:i===0||pal[i-1].g!==it.g,bg:i===S.pi?'var(--hover)':'transparent',hasHint:!!it.hint,run:()=>{this.setState({pal:false});it.run();},enter:()=>S.pi!==i&&this.setState({pi:i})}));
+    const dlgP=S.dlg&&P.find(p=>p.id===S.dlg);
+    const watchRows=coAll.filter(c=>c.watched).map(c=>({...c,open:c.open+(c.open===1?' open posting':' open postings'),rm:()=>this.setState(s=>({watch:{...s.watch,[c.cid]:false}}))}));
+    const inboxSub=isLoading?'Checking for new postings…':inbox.length+' new since yesterday 08:00';
+    const settingsLabel={scoring:'10a Settings · Scoring',search:'10b Settings · Search',watchlist:'10c Settings · Watchlist',digest:'10d Settings · Digest',password:'10e Settings · Password'}[tab];
+    return {
+      theme,isSignin:rn==='signin',isApp:rn!=='signin',
+      sideW:compact?'64px':'232px',labelDisp:compact?'none':'inline',footDisp:compact?'none':'flex',footDir:compact?'column':'row',
+      listW:Math.round(Math.max(340,Math.min(456,mainW*0.42)))+'px',
+      pw:S.pw,pwErr:S.pwErr,pwLoad:S.pwLoad,pwBorder:S.pwErr?'var(--bad)':'var(--line2)',pwBg:S.pwErr?'var(--bad-bg)':'var(--sheet)',signLabel:S.pwLoad?'Signing in':'Sign in',
+      setPw:e=>this.setState({pw:e.target.value,pwErr:false}),
+      signIn:e=>{e.preventDefault(); if(S.pwLoad) return; if(S.pw.trim().toLowerCase()!=='radar'){this.setState({pwErr:true}); return;} this.setState({pwLoad:true}); setTimeout(()=>{this.setState({pwLoad:false,pw:''}); this.go('#/inbox');},900);},
+      nav,toggleTheme:()=>this.setState({themeO:theme==='dark'?'light':'dark'}),themeLabel:theme==='dark'?'Light theme':'Dark theme',
+      hasBack:rn==='posting'||rn==='company',backLabel:rn==='company'?'Back to Companies':back[0],backHref:rn==='company'?'#/companies':back[1],
+      openSearch:()=>this.openSearch(),openPal:()=>this.openPal(),
+      isTriage:rn==='inbox'||rn==='posting',showList:rn==='inbox'&&!isEmpty,isLoading,isEmpty,emptyLine:'Nothing new since yesterday 08:00.',
+      hasDetail:!!dP,detailLabel:rn==='posting'?'03 Posting page':'02 Inbox · detail',detailMax:rn==='posting'?'880px':'none',
+      inboxSub,sorts:[['match','Match'],['newest','Newest']].map(([k,l])=>({label:l,on:S.sort===k,color:S.sort===k?'var(--ink)':'var(--ink2)',bg:S.sort===k?'var(--raised)':'transparent',shadow:S.sort===k?'var(--sh1)':'none',pick:()=>this.setState({sort:k})})),
+      skel:[62,78,54,70,66,48,74,58,68].map(w=>({w1:w+'%',w2:(w-18)+'%'})),rows,d,
+      isPostings:rn==='postings',allSub:P.length+' postings seen · '+P.filter(p=>!p.closed).length+' open · '+allList.length+' shown',q:S.q,setQ:e=>this.setState({q:e.target.value}),searchRef:this.searchRef,filters,saved,anyFilter,clearF:()=>this.setState({f:{...F0},q:''}),allRows,noResults:allList.length===0,
+      menuOpen:!!mf,menuX:S.menu?S.menu.x+'px':'0',menuY:S.menu?S.menu.y+'px':'0',menuItems,closeMenu:()=>this.setState({menu:null}),
+      isPipeline:rn==='pipeline',showClosed:S.showClosed,toggleClosed:()=>this.setState(s=>({showClosed:!s.showClosed})),swBg:sw(S.showClosed).bg,swTx:sw(S.showClosed).tx,columns,pipeCols:`repeat(${cols.length}, minmax(220px, 1fr))`,
+      isCompanies:rn==='companies',coSub:coRows.length+' companies with open postings'+(S.watchOnly?' on the watchlist':''),watchOnly:S.watchOnly,toggleWatchOnly:()=>this.setState(s=>({watchOnly:!s.watchOnly})),woBg:sw(S.watchOnly).bg,woTx:sw(S.watchOnly).tx,coRows,
+      isCompany:rn==='company',cv,months,
+      isOverview:rn==='overview',focal,focalLine:`Match ${S.minD} or higher, waiting in Inbox. ${inbox.length} new postings in total.`,newTotal:inbox.length,perDay:per,yTicks,bySource,skills,topCos,
+      salLine:`Only ${pub} of ${P.length} postings this month publish a salary. ITviec hides salary without sign-in.`,salTicks:[0,10,20,30,40,50,60].map(v=>({l:v+'M',x:(v/60*100)+'%'})),salPub:pub,salHidden:P.length-pub,salPubW:(pub/P.length*100)+'%',
+      isSources:rn==='sources',usage,srcRows,
+      isSettings:rn==='settings',setLabel:settingsLabel,tabs:TABS.map(([k,l])=>({label:l,href:'#/settings/'+k,on:tab===k?'page':undefined,color:tab===k?'var(--ink)':'var(--ink2)',bg:tab===k?'var(--hover)':'transparent',bar:tab===k?1:0})),
+      tabScoring:tab==='scoring',tabSearch:tab==='search',tabWatch:tab==='watchlist',tabDigest:tab==='digest',tabPassword:tab==='password',
+      passD,passA,weights,thresholds,preview,saveSettings:()=>this.toastArm({text:'Weights saved'}),resetW:()=>this.setState({w:{...W0},minD:70,minA:85}),
+      kw:S.kw.map(t=>({t,rm:()=>this.setState(s=>({kw:s.kw.filter(x=>x!==t)}))})),kwDraft:S.kwDraft,setKw:e=>this.setState({kwDraft:e.target.value}),addKw:e=>{if(e.key==='Enter'&&S.kwDraft.trim()){this.setState(s=>({kw:s.kw.concat(s.kwDraft.trim()),kwDraft:''}));}},
+      locs:['Ho Chi Minh City','Remote, Vietnam'],modeRows:['Remote','Hybrid','Onsite'].map(m=>({label:m,on:S.modes[m],...sw(S.modes[m]),toggle:()=>this.setState(s=>({modes:{...s.modes,[m]:!s.modes[m]}}))})),
+      watchRows,watchDraft:S.watchDraft,setWatchDraft:e=>this.setState({watchDraft:e.target.value}),watchEmpty:!S.watchDraft.trim(),watchOp:S.watchDraft.trim()?1:.5,watchCursor:S.watchDraft.trim()?'pointer':'not-allowed',
+      addWatch:()=>{const q=S.watchDraft.trim().toLowerCase(); const c=coAll.find(x=>x.name.toLowerCase().includes(q)); if(c) this.setState(s=>({watch:{...s.watch,[c.cid]:true},watchDraft:''})); else this.toastArm({text:'No company matches “'+S.watchDraft.trim()+'”'});},
+      addWatchKey:e=>{if(e.key==='Enter'&&S.watchDraft.trim()){const q=S.watchDraft.trim().toLowerCase(); const c=coAll.find(x=>x.name.toLowerCase().includes(q)); if(c) this.setState(s=>({watch:{...s.watch,[c.cid]:true},watchDraft:''}));}},
+      digest:S.digest,setDigest:e=>this.setState({digest:e.target.value}),instant:S.instant,toggleInstant:()=>this.setState(s=>({instant:!s.instant})),inBg:sw(S.instant).bg,inTx:sw(S.instant).tx,alertLine:`Sends a message as soon as a posting scores ${S.minA} or higher.`,
+      passFields:['Current password','New password','Repeat new password'].map((label,i)=>({label,v:S.pass[i],set:e=>{const v=e.target.value; this.setState(s=>{const pass=s.pass.slice(); pass[i]=v; return {pass,passErr:false};});},err:pe&&i===2,border:pe&&i===2?'var(--bad)':'var(--line2)',bg:pe&&i===2?'var(--bad-bg)':'var(--sheet)'})),
+      savePass:()=>{if(S.pass[1]!==S.pass[2]||!S.pass[1]){this.setState({passErr:true});return;} this.setState({pass:['','',''],passErr:false}); this.toastArm({text:'Password changed'});},
+      pal:S.pal,pq:S.pq,palRef:this.palRef,palItems,palEmpty:S.pal&&!pal.length,closePal:()=>this.setState({pal:false}),setPq:e=>this.setState({pq:e.target.value,pi:0}),
+      palKey:e=>{if(e.key==='ArrowDown'){e.preventDefault();this.setState({pi:Math.min(pal.length-1,S.pi+1)});} else if(e.key==='ArrowUp'){e.preventDefault();this.setState({pi:Math.max(0,S.pi-1)});} else if(e.key==='Enter'&&pal[S.pi]){e.preventDefault();this.setState({pal:false});pal[S.pi].run();}},
+      dlgOpen:!!dlgP,dlgSub:dlgP?dlgP.co+' · '+dlgP.title:'',note:S.note,noteRef:this.noteRef,setNote:e=>this.setState({note:e.target.value}),closeDlg:()=>this.setState({dlg:null}),
+      confirmApplied:()=>{const id=S.dlg, n=S.note.trim(); this.setState({dlg:null}); this.act('Applied',id,n?(n.startsWith('Next')?n:'Next: '+n):null);},
+      noteKey:e=>{if(e.key==='Enter'&&(e.metaKey||e.ctrlKey)){e.preventDefault(); const id=S.dlg, n=S.note.trim(); this.setState({dlg:null}); this.act('Applied',id,n?'Next: '+n:null);}},
+      hasToast:!!S.toast,toastText:S.toast?S.toast.text:'',undo:()=>S.toast&&S.toast.id?this.undo():this.setState({toast:null})
+    };
+  }
+}
+</script>
+</body>
+</html>

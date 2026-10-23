@@ -5,7 +5,8 @@ const testUrl = process.env.TEST_DATABASE_URL;
 process.env.DATABASE_URL = testUrl ?? "postgres://unused";
 const { pool } = await import("../src/db.js");
 const { migrate } = await import("../src/migrate.js");
-const { savePosting, markSeen, closeStale } = await import("../src/store.js");
+const { savePosting, markSeen, closeStale, rescoreAll } = await import("../src/store.js");
+const { savePrefs, DEFAULT_PREFS } = await import("../src/settings.js");
 
 const base = {
   source: "itviec", externalId: "5841", url: "https://itviec.com/it-jobs/x-5841", companyName: "Endava Việt Nam",
@@ -18,7 +19,7 @@ describe.skipIf(!testUrl)("savePosting", () => {
     await migrate();
   });
   beforeEach(async () => {
-    await pool.query("TRUNCATE jobs, job_sources, applications RESTART IDENTITY CASCADE");
+    await pool.query("TRUNCATE jobs, job_sources, applications, rejected_postings, settings RESTART IDENTITY CASCADE");
   });
   afterAll(async () => pool.end());
 
@@ -46,6 +47,24 @@ describe.skipIf(!testUrl)("savePosting", () => {
     await savePosting({ ...base, closed: true });
     const back = await savePosting(base);
     expect(back.status).toBe("reposted");
+  });
+
+  it("does not send the crawler back to a rejected posting", async () => {
+    await savePosting({ ...base, externalId: "8000", title: "Accountant" });
+    expect(await markSeen("itviec", ["8000", "8001"])).toEqual(["8001"]);
+  });
+
+  it("removes untriaged postings the current filters no longer keep, and keeps triaged ones", async () => {
+    const dropped = await savePosting(base);
+    const triaged = await savePosting({ ...base, externalId: "9", title: "Platform Engineer", companyName: "Other" });
+    await pool.query("UPDATE applications SET status = 'applied' WHERE job_id = $1", [triaged.jobId]);
+    await savePrefs({ ...DEFAULT_PREFS, keywords: ["SRE"] });
+    await rescoreAll();
+    const { rows } = await pool.query("SELECT id FROM jobs ORDER BY id");
+    expect(rows.map((r) => r.id)).toEqual([triaged.jobId]);
+    expect(await markSeen("itviec", [base.externalId])).toEqual([]);
+    await savePrefs(DEFAULT_PREFS);
+    expect(dropped.status).toBe("new");
   });
 
   it("reports which listed ids are new and closes postings unseen for a week", async () => {

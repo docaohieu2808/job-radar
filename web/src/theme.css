@@ -1,0 +1,53 @@
+/* Tokens, measured contrast and keyframes from the Claude Design export (design/source/Job Radar.dc.html).
+   Contrast, measured (WCAG 2.1):
+   Light — ink #16161a on sheet #fff 17.9:1 · ink2 #45454c 9.6:1 · ink3 #64646c 5.9:1 (5.4:1 on sunk #f5f5f4)
+           accent text #b04a00 on #fff 5.5:1 · control border #8f8f97 3.2:1 · focus ring rgb(176 74 0/.7) on #fff 3.1:1
+           primary button #fff on #16161a 17.9:1 · warn #8a5600 on #faf1df 5.6:1 · ok #1d7148 on #e9f4ee 5.6:1 · bad #b42318 on #fdefed 5.8:1
+   Dark  — ink #ececef on sheet #19191c 15.2:1 · ink2 #b6b6bf 9.1:1 · ink3 #8e8e98 5.4:1
+           accent text #ff9d52 8.8:1 · control border #6e6e78 3.4:1 · ring rgb(255 157 82/.7) 5.0:1 */
+:root,[data-theme="light"]{color-scheme:light;--canvas:#ebebea;--wash:#f8f8f7;--sheet:#ffffff;--raised:#ffffff;--sunk:#f5f5f4;--hover:#f4f4f3;--navh:rgb(0 0 0 / .045);--navsel:#ffffff;--ink:#16161a;--ink2:#45454c;--ink3:#64646c;--line:#e8e8ea;--line2:#d6d6da;--ctl:#8f8f97;--accent:#f38020;--acc-ink:#b04a00;--acc-tint:#fdf1e6;--ring:rgb(176 74 0 / .7);--btn:#16161a;--btn-h:#303036;--btn-ink:#ffffff;--scrim:rgb(22 22 26 / .28);--ok:#1d7148;--ok-bg:#e9f4ee;--warn:#8a5600;--warn-bg:#faf1df;--bad:#b42318;--bad-bg:#fdefed;--info:#2e5c99;--info-bg:#ebf1f9;--c1:#4d6a8c;--c2:#cdd1d8;--c3:#a7845a;--t1:#e6e2ef;--t1i:#4a3f6a;--t2:#dfebe8;--t2i:#2c5a50;--t3:#eee5da;--t3i:#6a4827;--t4:#e1e7f0;--t4i:#32496e;--t5:#ede2e5;--t5i:#6a3946;--t6:#e5e8dc;--t6i:#485430;--sh1:1px 1px 2px rgb(0 0 0 / .06),4px 8px 24px -8px rgb(0 0 0 / .10);--sh15:1px 1px 3px rgb(0 0 0 / .06),6px 12px 28px -10px rgb(0 0 0 / .13);--sh2:1px 2px 4px rgb(0 0 0 / .07),8px 16px 32px -12px rgb(0 0 0 / .16);--sh3:2px 4px 8px rgb(0 0 0 / .08),16px 32px 64px -16px rgb(0 0 0 / .24)}
+[data-theme="dark"]{color-scheme:dark;--canvas:#0e0e10;--wash:#18181b;--sheet:#19191c;--raised:#232327;--sunk:#151518;--hover:#202024;--navh:rgb(255 255 255 / .05);--navsel:#1f1f23;--ink:#ececef;--ink2:#b6b6bf;--ink3:#8e8e98;--line:#29292e;--line2:#36363c;--ctl:#6e6e78;--accent:#f6913a;--acc-ink:#ff9d52;--acc-tint:#2a1d12;--ring:rgb(255 157 82 / .7);--btn:#ececef;--btn-h:#d2d2d8;--btn-ink:#16161a;--scrim:rgb(0 0 0 / .5);--ok:#62c393;--ok-bg:#132a1f;--warn:#e2b45e;--warn-bg:#2b2313;--bad:#f2806f;--bad-bg:#2e1715;--info:#86abe2;--info-bg:#152238;--c1:#7d9cc2;--c2:#3a3d44;--c3:#c4a173;--t1:#2b2738;--t1i:#c7bce8;--t2:#1f2f2c;--t2i:#9fd1c4;--t3:#33291f;--t3i:#e0c19e;--t4:#1f2838;--t4i:#a9c0e6;--t5:#33242a;--t5i:#e3b5c1;--t6:#272c1f;--t6i:#c4d0a4;--sh1:0 1px 2px rgb(0 0 0 / .5),2px 4px 12px -4px rgb(0 0 0 / .45);--sh15:0 1px 2px rgb(0 0 0 / .55),3px 6px 14px -6px rgb(0 0 0 / .55);--sh2:1px 2px 3px rgb(0 0 0 / .55),4px 8px 18px -8px rgb(0 0 0 / .6);--sh3:1px 3px 6px rgb(0 0 0 / .6),8px 16px 36px -12px rgb(0 0 0 / .7)}
+html,body{margin:0;height:100%;background:var(--canvas)}
+body{font-family:Inter,system-ui,sans-serif;font-size:14px;font-variant-numeric:tabular-nums;-webkit-font-smoothing:antialiased;color:var(--ink)}
+button,input,textarea,select{font:inherit;color:inherit}
+a{color:var(--acc-ink);text-decoration:none}
+a:hover{text-decoration:underline;text-underline-offset:2px}
+:focus-visible{outline:2px solid var(--ring);outline-offset:2px}
+:focus:not(:focus-visible){outline:none}
+::placeholder{color:var(--ink3);opacity:1}
+@keyframes jr-in{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+@keyframes jr-pop{from{opacity:0;transform:scale(.96)}to{opacity:1;transform:none}}
+@keyframes jr-fade{from{opacity:0}to{opacity:1}}
+@keyframes jr-spin{to{transform:rotate(360deg)}}
+@keyframes jr-pulse{0%,100%{opacity:1}50%{opacity:.55}}
+@media (prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:0s!important;transition-duration:0s!important}}
+
+/* The export's style-hover / style-active / style-focus attributes, as classes. */
+.hv-nav:hover{background:var(--navh)!important;color:var(--ink)!important;text-decoration:none}
+.hv-btn:hover{background:var(--btn-h)!important}
+.hv-ctl:hover{border-color:var(--ctl)!important}
+.hv-row:hover{background:var(--hover)!important;text-decoration:none}
+.hv-tab:hover{background:var(--hover)!important;color:var(--ink)!important;text-decoration:none}
+.hv-ink:hover{color:var(--ink)!important;text-decoration:none}
+.hv-bad:hover{background:var(--bad-bg)!important}
+.hv-line2:hover{border-color:var(--line2)!important;text-decoration:none}
+.hv-fade:hover{opacity:.75}
+.hv-x:hover{background:var(--navh)!important;color:var(--ink)!important}
+.press:active{transform:scale(.98)}
+.fc-acc:focus{border-color:var(--acc-ink)!important}
+.fc-solid:focus{border-style:solid!important;border-color:var(--acc-ink)!important}
+.no-scrollbar{scrollbar-width:none}
+
+/* Phone: screens without their own phone drawing collapse to one column inside the phone sheet. */
+@media (max-width: 699px) {
+  .set-row { grid-template-columns: minmax(0,1fr) 48px !important; row-gap: 4px; }
+  .set-row > input[type="range"] { grid-column: 1 / -1; order: 3; }
+  .ov-grid { grid-template-columns: minmax(0,1fr) !important; }
+  .ov-grid > section { grid-column: auto !important; border-right: 0 !important; padding: 20px 16px !important; }
+  .ov-head { flex-direction: column; align-items: flex-start !important; gap: 20px !important; padding: 20px 16px !important; }
+  .src-grid { grid-template-columns: minmax(0,1fr) 96px 56px 16px !important; padding: 0 16px !important; }
+  .src-grid > :nth-child(2), .src-grid > :nth-child(4), .src-grid > :nth-child(6) { display: none !important; }
+  .usage-grid { grid-template-columns: minmax(0,1fr) !important; }
+  .co-grid { grid-template-columns: minmax(0,1fr) 56px 40px !important; padding: 0 16px !important; }
+  .co-grid > :nth-child(2), .co-grid > :nth-child(4) { display: none !important; }
+}

@@ -18,7 +18,7 @@ services:
     networks: [internal]
     deploy:
       resources:
-        limits: { cpus: "0.5", memory: 512M }
+        limits: { cpus: "0.4", memory: 512M }
 
   crawler:
     build: .
@@ -30,7 +30,33 @@ services:
     networks: [internal, traefik-network]
     deploy:
       resources:
-        limits: { cpus: "1.0", memory: 1536M }
+        limits: { cpus: "0.8", memory: 1280M }
+
+  # The screens and their API. Tailnet-only: DNS points at oracle's tailnet address and Traefik only
+  # accepts tailnet sources, so the public IP with this Host header gets 403.
+  web:
+    image: job-radar:local
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      PORT: "8080"
+    command: ["node", "dist/src/server.js"]
+    depends_on:
+      db: { condition: service_healthy }
+      crawler: { condition: service_started }
+    networks: [internal, traefik-network]
+    labels:
+      traefik.enable: "true"
+      traefik.docker.network: traefik-network
+      traefik.http.routers.job-radar.rule: Host(`jobs.docaohieu.com`)
+      traefik.http.routers.job-radar.entrypoints: websecure
+      traefik.http.routers.job-radar.tls: "true"
+      traefik.http.routers.job-radar.middlewares: job-radar-tailnet@docker,app-chain@file
+      traefik.http.middlewares.job-radar-tailnet.ipallowlist.sourcerange: 100.64.0.0/10
+      traefik.http.services.job-radar.loadbalancer.server.port: "8080"
+    deploy:
+      resources:
+        limits: { cpus: "0.3", memory: 256M }
 
   # Runs the test suite against a throwaway database on the same Postgres: `docker compose run --rm test`.
   test:
