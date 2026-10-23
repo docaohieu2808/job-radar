@@ -79,7 +79,7 @@ export function needsBrowser(html: string, text: string): boolean {
 // A company page as a reader sees it: plain fetch first, a headless browser only when that returns an empty
 // JavaScript shell. Robots rules were already checked by the caller for the same address.
 export async function readSite(url: string): Promise<string> {
-  const html = await readSite(url);
+  const html = await fetchSite(url, { browserLike: true });
   if (!needsBrowser(html, mainText(html))) return html;
   try {
     return await renderPage(url);

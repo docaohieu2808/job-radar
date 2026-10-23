@@ -87,6 +87,23 @@ describe("career pages", () => {
     expect(looksLikeJobTitle("Lập trình viên Java (10)", ["Infra", "Network"])).toBe(false);
   });
 
+  it("reads a plain page with one fetch and no browser", async () => {
+    const { readSite } = await import("../src/sources/career.js");
+    const page = `<html><body><main>${"Acme builds software. ".repeat(40)}</main></body></html>`;
+    const calls: string[] = [];
+    const original = globalThis.fetch;
+    globalThis.fetch = (async (u: string) => {
+      calls.push(String(u));
+      return new Response(page, { status: 200, headers: { "content-type": "text/html" } });
+    }) as typeof fetch;
+    try {
+      expect(await readSite("https://acme.vn")).toBe(page);
+      expect(calls).toEqual(["https://acme.vn"]);
+    } finally {
+      globalThis.fetch = original;
+    }
+  });
+
   it("tries the usual spellings of a site", async () => {
     const { siteVariants } = await import("../src/sources/career.js");
     expect(siteVariants("https://fsn.vn")).toEqual(["https://fsn.vn", "https://www.fsn.vn", "http://fsn.vn", "http://www.fsn.vn"]);
