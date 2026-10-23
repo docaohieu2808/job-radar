@@ -253,7 +253,11 @@ export const career: Source = {
   name: "career",
   seeds: [],
   // Thousands of boards share these API hosts; one request every two seconds each stays well inside their limits.
-  hostIntervalSeconds: { "boards-api.greenhouse.io": 2, "api.ashbyhq.com": 2, "api.lever.co": 2 },
+  // Tasks are paced by the board address they carry, so those hosts get the same pace as the APIs behind them.
+  hostIntervalSeconds: {
+    "boards-api.greenhouse.io": 2, "boards.greenhouse.io": 2, "job-boards.greenhouse.io": 2,
+    "api.ashbyhq.com": 2, "jobs.ashbyhq.com": 2, "api.lever.co": 2, "jobs.lever.co": 2,
+  },
   handlers: {
     // Website home page -> career page (or an ATS board). Re-checked weekly when nothing was found.
     "career-discover": async (task) => {
