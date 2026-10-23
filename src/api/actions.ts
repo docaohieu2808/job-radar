@@ -3,6 +3,8 @@ import { pool } from "../db.js";
 import { savePrefs, loadPrefs } from "../settings.js";
 import { DEFAULT_PREFS, type Prefs } from "../prefs.js";
 import { rescoreAll } from "../store.js";
+import { normalizeKey } from "../normalize-key.js";
+import { ensureCompany, siteRoot } from "../companies.js";
 
 const STATUSES = new Set(["new", "interested", "applied", "interviewing", "offer", "skipped"]);
 
@@ -19,10 +21,16 @@ export async function setStatus(jobId: number, status: string, note?: string | n
 export async function setWatch(name: string, watch: boolean): Promise<void> {
   if (!name.trim()) throw new BadRequest("company name is empty");
   await pool.query(
-    `INSERT INTO companies (name, watch, discovered_via) VALUES ($1, $2, 'watchlist')
-     ON CONFLICT (name) DO UPDATE SET watch = EXCLUDED.watch`,
-    [name.trim(), watch],
+    `INSERT INTO companies (name, key, watch, discovered_via) VALUES ($1, $2, $3, 'watchlist')
+     ON CONFLICT (key) DO UPDATE SET watch = EXCLUDED.watch`,
+    [name.trim(), normalizeKey(name), watch],
   );
+}
+
+// The owner's own website for a company outranks anything found automatically, and restarts discovery.
+export async function setWebsite(name: string, website: string): Promise<void> {
+  if (!siteRoot(website)) throw new BadRequest("not a website address");
+  await ensureCompany(name.trim(), { url: website, source: "owner" });
 }
 
 const clamp = (v: unknown, lo: number, hi: number, fallback: number) => {

@@ -2,6 +2,7 @@
 import { fetchText } from "../http.js";
 import { savePosting, type Posting } from "../store.js";
 import { htmlToText } from "../extract.js";
+import { websiteFromText } from "../companies.js";
 import { HOUR, type Source } from "./types.js";
 
 const URL_SEARCH = "https://ms.vietnamworks.com/job-search/v1.0/search";
@@ -10,6 +11,7 @@ type VnwJob = {
   jobId: number;
   jobTitle: string;
   companyName: string;
+  companyProfile?: string;
   jobUrl: string;
   salaryMin: number;
   salaryMax: number;
@@ -40,6 +42,7 @@ export function toPosting(j: VnwJob): Posting {
     url: j.jobUrl,
     title: j.jobTitle,
     companyName: j.companyName,
+    companyWebsite: { url: websiteFromText(j.companyProfile ?? ""), source: "vietnamworks" },
     location: locations.join(" · "),
     tags: (j.skills ?? []).map((s) => s.skillName),
     salaryText,

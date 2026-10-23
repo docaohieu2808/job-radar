@@ -47,7 +47,17 @@ export type PostingView = {
   statusAt: string;
 };
 
-export type CompanyView = { key: string; name: string; watch: boolean };
+export type CompanyView = {
+  key: string;
+  name: string;
+  watch: boolean;
+  website: string | null;
+  websiteSource: string | null;
+  careerStatus: string;
+  careerUrl: string | null;
+  careerKind: string | null;
+  careerCheckedAt: string | null;
+};
 
 export type StateView = {
   now: string;

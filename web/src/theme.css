@@ -49,5 +49,5 @@ a:hover{text-decoration:underline;text-underline-offset:2px}
   .src-grid > :nth-child(2), .src-grid > :nth-child(4), .src-grid > :nth-child(6) { display: none !important; }
   .usage-grid { grid-template-columns: minmax(0,1fr) !important; }
   .co-grid { grid-template-columns: minmax(0,1fr) 56px 40px !important; padding: 0 16px !important; }
-  .co-grid > :nth-child(2), .co-grid > :nth-child(4) { display: none !important; }
+  .co-grid > :nth-child(2), .co-grid > :nth-child(4), .co-grid > :nth-child(5) { display: none !important; }
 }

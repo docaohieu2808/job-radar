@@ -5,7 +5,7 @@ import path from "node:path";
 import { pool } from "./db.js";
 import { loadDescription, loadState } from "./api/state.js";
 import { tryNow } from "./api/sources-health.js";
-import { BadRequest, NotFound, setStatus, setWatch, updatePrefs } from "./api/actions.js";
+import { BadRequest, NotFound, setStatus, setWatch, setWebsite, updatePrefs } from "./api/actions.js";
 
 const PORT = Number(process.env.PORT ?? 8080);
 const STATIC_DIR = path.resolve(process.cwd(), "web/dist");
@@ -52,6 +52,11 @@ async function api(req: IncomingMessage, res: ServerResponse, url: URL): Promise
   if (method === "POST" && parts[1] === "companies" && parts[2] === "watch") {
     const body = await readBody(req);
     await setWatch(String(body.name ?? ""), Boolean(body.watch));
+    return send(res, 200, { ok: true });
+  }
+  if (method === "POST" && parts[1] === "companies" && parts[2] === "website") {
+    const body = await readBody(req);
+    await setWebsite(String(body.name ?? ""), String(body.website ?? ""));
     return send(res, 200, { ok: true });
   }
   if (method === "PUT" && parts[1] === "prefs") return send(res, 200, await updatePrefs(await readBody(req)));

@@ -15,6 +15,7 @@ const SOURCE_NAMES: Record<string, string> = {
   itviec: "ITviec",
   topdev: "TopDev",
   vietnamworks: "VietnamWorks",
+  career: "Career page",
 };
 
 export function sourceName(source: string): string {
@@ -72,16 +73,28 @@ export async function loadState(): Promise<StateView> {
     statusAt: r.status_at.toISOString(),
   }));
 
-  const watched = await pool.query<{ name: string }>("SELECT name FROM companies WHERE watch");
-  const watchKeys = new Set(watched.rows.map((c) => normalizeKey(c.name)));
+  const { rows: registry } = await pool.query<{
+    key: string | null; name: string; watch: boolean; website: string | null; website_source: string | null;
+    career_status: string; career_checked_at: Date | null; career_url: string | null; career_kind: string | null;
+  }>(`SELECT c.key, c.name, c.watch, c.website, c.website_source, c.career_status, c.career_checked_at,
+             p.url AS career_url, p.kind AS career_kind
+        FROM companies c
+        LEFT JOIN LATERAL (SELECT url, kind FROM career_pages WHERE company_id = c.id ORDER BY depth, id LIMIT 1) p ON true`);
+  const info = new Map(registry.map((c) => [c.key ?? normalizeKey(c.name), c]));
+  const view = (key: string, name: string): CompanyView => {
+    const c = info.get(key);
+    return {
+      key, name, watch: Boolean(c?.watch), website: c?.website ?? null, websiteSource: c?.website_source ?? null,
+      careerStatus: c?.career_status ?? "unknown", careerUrl: c?.career_url ?? null, careerKind: c?.career_kind ?? null,
+      careerCheckedAt: c?.career_checked_at?.toISOString() ?? null,
+    };
+  };
   const byKey = new Map<string, CompanyView>();
-  for (const p of postings) {
-    if (!byKey.has(p.companyKey)) byKey.set(p.companyKey, { key: p.companyKey, name: p.company, watch: watchKeys.has(p.companyKey) });
-  }
+  for (const p of postings) if (!byKey.has(p.companyKey)) byKey.set(p.companyKey, view(p.companyKey, p.company));
   // Watched companies with no posting yet still belong on the watchlist.
-  for (const c of watched.rows) {
-    const key = normalizeKey(c.name);
-    if (!byKey.has(key)) byKey.set(key, { key, name: c.name, watch: true });
+  for (const c of registry) {
+    const key = c.key ?? normalizeKey(c.name);
+    if (c.watch && !byKey.has(key)) byKey.set(key, view(key, c.name));
   }
 
   const health = await sourceHealth();

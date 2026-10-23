@@ -8,6 +8,7 @@ import type { Prefs } from "./prefs.js";
 import { scorePosting } from "./score.js";
 import { loadPrefs } from "./settings.js";
 import { normalizeKey } from "./normalize-key.js";
+import { ensureCompany, websiteFromEmails } from "./companies.js";
 
 export { normalizeKey };
 
@@ -23,6 +24,8 @@ export type Posting = {
   tags?: string[];
   postedAt?: Date | null;
   closed?: boolean;
+  // The company's own website when the source states it (TopDev, VietnamWorks profile).
+  companyWebsite?: { url: string | null; source: string };
 };
 
 export type SaveResult = { status: "skipped" | "new" | "reposted" | "updated" | "unchanged"; jobId?: number; score?: number };
@@ -61,6 +64,8 @@ export async function savePosting(p: Posting): Promise<SaveResult> {
   }
 
   const { score, reasons } = scorePosting(facts, prefs.weights);
+  const emailSite = websiteFromEmails(p.companyName, p.description);
+  const companyId = await ensureCompany(p.companyName, p.companyWebsite?.url ? p.companyWebsite : emailSite ? { url: emailSite, source: "contact email" } : null);
   const hash = contentHash(p.description);
   const key = dedupeKey(p.companyName, p.title);
   const fields = [
@@ -93,9 +98,9 @@ export async function savePosting(p: Posting): Promise<SaveResult> {
         const inserted = await client.query<{ id: number }>(
           `INSERT INTO jobs (company_name, title, salary_min, salary_max, currency, location, work_mode, level, years,
                              stack, benefits, english_required, cert_support, description, raw_excerpts, content_hash,
-                             score, score_reasons, dedupe_key, posted_at)
-           VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20) RETURNING id`,
-          fields,
+                             score, score_reasons, dedupe_key, posted_at, company_id)
+           VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21) RETURNING id`,
+          [...fields, companyId],
         );
         jobId = inserted.rows[0].id;
         status = "new";
@@ -127,8 +132,9 @@ export async function savePosting(p: Posting): Promise<SaveResult> {
     }
 
     await client.query(
-      `UPDATE jobs SET last_seen_at = now(), closed_at = CASE WHEN $2 THEN COALESCE(closed_at, now()) ELSE closed_at END WHERE id = $1`,
-      [jobId, Boolean(p.closed)],
+      `UPDATE jobs SET last_seen_at = now(), company_id = COALESCE(company_id, $3),
+              closed_at = CASE WHEN $2 THEN COALESCE(closed_at, now()) ELSE closed_at END WHERE id = $1`,
+      [jobId, Boolean(p.closed), companyId],
     );
     return { status, jobId, score };
   });

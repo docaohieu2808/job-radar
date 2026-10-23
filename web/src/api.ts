@@ -20,6 +20,7 @@ export const api = {
   description: (id: number) => call<{ description: string; terms: string[] }>("GET", `/api/jobs/${id}/description`),
   setStatus: (id: number, status: string, note?: string | null) => call("POST", `/api/jobs/${id}/status`, { status, note }),
   watch: (name: string, watch: boolean) => call("POST", "/api/companies/watch", { name, watch }),
+  website: (name: string, website: string) => call("POST", "/api/companies/website", { name, website }),
   savePrefs: (prefs: Prefs) => call<Prefs>("PUT", "/api/prefs", prefs),
   checkSource: (id: string) => call<{ ok: boolean; pausedUntil: string | null; message: string }>("POST", `/api/sources/${id}/check`),
 };

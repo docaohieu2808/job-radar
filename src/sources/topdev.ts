@@ -6,13 +6,13 @@ import { HOUR, type Source } from "./types.js";
 
 const FIELDS =
   "fields[job]=id,title,salary,detail_url,addresses,skills_arr,job_levels_str,job_types_str,published,company," +
-  "responsibilities_original,requirements_original,benefits_original,experiences_str&fields[company]=display_name";
+  "responsibilities_original,requirements_original,benefits_original,experiences_str&fields[company]=display_name,website";
 
 type TopDevJob = {
   id: number;
   title: string;
   detail_url: string;
-  company?: { display_name?: string };
+  company?: { display_name?: string; website?: string };
   salary?: { min?: string; max?: string; currency?: string; is_negotiable?: string; value?: string | null };
   addresses?: { address_region_list?: string; sort_addresses?: string };
   skills_arr?: string[];
@@ -41,6 +41,7 @@ export function toPosting(j: TopDevJob): Posting {
     url: j.detail_url,
     title: j.title,
     companyName: j.company?.display_name ?? "",
+    companyWebsite: { url: j.company?.website ?? null, source: "topdev" },
     location: j.addresses?.sort_addresses ?? j.addresses?.address_region_list ?? "",
     tags: j.skills_arr ?? [],
     salaryText: salaryText || undefined,

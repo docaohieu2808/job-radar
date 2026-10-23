@@ -81,11 +81,11 @@ export function SourcesScreen({ app }: { app: App }) {
                   <div style={css("font-size:14px;color:var(--ink)")}>{s.error}</div>
                   <div style={css("margin-top:2px;font-size:13px;color:var(--ink3)")}>{s.errorDetail}</div>
                 </div>
-                <button onClick={() => void check(s.id, s.name)} disabled={checking === s.id} className="hv-ctl press"
+                {s.id !== "career" && <button onClick={() => void check(s.id, s.name)} disabled={checking === s.id} className="hv-ctl press"
                   style={css("height:32px;min-width:104px;padding:0 12px;border-radius:10px;border:1px solid var(--line2);background:var(--sheet);font-size:13px;font-weight:500;display:flex;align-items:center;justify-content:center;gap:8px;cursor:pointer")}>
                   {checking === s.id && <span style={css("width:12px;height:12px;border-radius:9999px;border:2px solid currentColor;border-right-color:transparent;box-sizing:border-box;animation:jr-spin 700ms linear infinite")} />}
                   {checking === s.id ? "Checking" : s.status === "Blocked" ? "Try now" : "Check now"}
-                </button>
+                </button>}
               </div>
             )}
           </div>

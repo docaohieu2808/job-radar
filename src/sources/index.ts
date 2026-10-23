@@ -6,9 +6,10 @@ import { itviec } from "./itviec.js";
 import { linkedin } from "./linkedin.js";
 import { topdev } from "./topdev.js";
 import { vietnamworks } from "./vietnamworks.js";
+import { career } from "./career.js";
 import type { Source } from "./types.js";
 
-export const sources: Source[] = [linkedin, itviec, topdev, vietnamworks];
+export const sources: Source[] = [linkedin, itviec, topdev, vietnamworks, career];
 
 export const sourceHandlers: Record<string, Handler> = Object.assign({}, ...sources.map((s) => s.handlers));
 

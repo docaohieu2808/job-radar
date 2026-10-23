@@ -231,13 +231,23 @@ export function useApp() {
     setData((d) => {
       if (!d) return d;
       const has = d.companies.some((c) => c.key === key);
-      const companies = has ? d.companies.map((c) => (c.key === key ? { ...c, watch } : c)) : [...d.companies, { key, name, watch }];
+      const companies = has ? d.companies.map((c) => (c.key === key ? { ...c, watch } : c)) : [...d.companies, { key, name, watch, website: null, websiteSource: null, careerStatus: "unknown", careerUrl: null, careerKind: null, careerCheckedAt: null }];
       return { ...d, companies };
     });
     api.watch(name, watch).catch(() => {
       showToast({ text: "Could not save. Reloaded." });
       void reload();
     });
+  };
+
+  const setWebsite = async (name: string, website: string) => {
+    try {
+      await api.website(name, website);
+      showToast({ text: "Website saved. Looking for the career page." });
+      void reload();
+    } catch {
+      showToast({ text: "That is not a website address." });
+    }
   };
 
   const savePrefs = async (next: Prefs, text?: string) => {
@@ -301,7 +311,7 @@ export function useApp() {
     sel, setSel, hover, setHover, leaving, seen, markSeen, sort: activeSort, setSort,
     toast, setToast, showToast, pal, setPal, dlg, setDlg, filters, setFilters, q, setQ, menu, setMenu,
     theme, setTheme, vw, compact: vw < 1180, phone: vw < 700, searchRef,
-    go, act, moveTo, move, openSource, openApplied, openSearch, setWatch, savePrefs, isOpen,
+    go, act, moveTo, move, openSource, openApplied, openSearch, setWatch, setWebsite, savePrefs, isOpen,
   };
 }
 

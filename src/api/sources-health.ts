@@ -66,6 +66,8 @@ export async function sourceHealth(): Promise<{ sources: SourceHealth[]; usage: 
     });
   }
 
+  sources.push(await careerHealth());
+
   const { rows } = await pool.query<{ pages: string | null; linkedin: string; last: Date | null }>(
     `SELECT (SELECT sum(fetched) FROM crawl_runs WHERE started_at >= date_trunc('day', now() AT TIME ZONE 'Asia/Ho_Chi_Minh') AT TIME ZONE 'Asia/Ho_Chi_Minh') AS pages,
             (SELECT count(*) FROM crawl_queue WHERE kind = 'linkedin-posting' AND created_at > date_trunc('day', now())) AS linkedin,
@@ -78,6 +80,37 @@ export async function sourceHealth(): Promise<{ sources: SourceHealth[]; usage: 
   };
 }
 
+// Company career pages as one row: how many companies have a known page, and what is wrong with the rest.
+async function careerHealth(): Promise<SourceHealth> {
+  const { rows } = await pool.query<{ found: string; none: string; browser: string; pending: string; companies: string; errors: string; last_error: string | null; last_run: Date | null; seen: string }>(
+    `SELECT count(*) FILTER (WHERE career_status = 'found') AS found,
+            count(*) FILTER (WHERE career_status = 'none') AS none,
+            count(*) FILTER (WHERE career_status = 'needs_browser') AS browser,
+            count(*) FILTER (WHERE career_status = 'unknown' AND website IS NOT NULL) AS pending,
+            count(*) AS companies,
+            (SELECT count(*) FROM crawl_queue WHERE kind LIKE 'career-%' AND last_error IS NOT NULL AND (done_at IS NULL OR last_run_at > now() - interval '1 day')) AS errors,
+            (SELECT last_error FROM crawl_queue WHERE kind LIKE 'career-%' AND last_error IS NOT NULL ORDER BY last_run_at DESC NULLS LAST LIMIT 1) AS last_error,
+            (SELECT max(last_run_at) FROM crawl_queue WHERE kind LIKE 'career-%') AS last_run,
+            (SELECT count(*) FROM job_sources WHERE source = 'career' AND last_seen_at > now() - interval '1 day') AS seen
+       FROM companies`,
+  );
+  const r = rows[0];
+  const errors = Number(r.errors);
+  return {
+    id: "career",
+    name: "Career pages",
+    kind: "Company career page",
+    note: `${r.found} found · ${r.pending} being looked for · ${r.none} without one · ${r.browser} need a browser · ${r.companies} companies known`,
+    status: errors > 0 ? "Degraded" : "Healthy",
+    lastRun: r.last_run?.toISOString() ?? null,
+    seen24h: Number(r.seen),
+    errors,
+    error: errors && r.last_error ? `A career page could not be read: ${r.last_error}` : null,
+    errorDetail: errors ? "Retrying with a longer wait. One company's site failing does not stop the others." : null,
+    pausedUntil: null,
+  };
+}
+
 export type TryResult = { ok: boolean; pausedUntil: string | null; message: string };
 
 // "Try now" / "Check now": runs one of the source's searches immediately, outside the queue order.
@@ -85,7 +118,7 @@ export type TryResult = { ok: boolean; pausedUntil: string | null; message: stri
 // the pause doubles as it would for the crawler.
 export async function tryNow(sourceId: string): Promise<TryResult> {
   const s = SOURCES.find((x) => x.id === sourceId);
-  if (!s) throw new Error(`unknown source ${sourceId}`);
+  if (!s) return { ok: false, pausedUntil: null, message: "Career pages are checked one site at a time; nothing to run at once." };
   const kind = `${s.id}-search`;
   const { rows } = await pool.query<Task>(
     `UPDATE crawl_queue SET locked_at = now(), attempts = attempts + 1

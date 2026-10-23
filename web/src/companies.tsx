@@ -1,5 +1,6 @@
-// Screens 06 Companies and 07 Company page. Career-page status is left out until career pages are crawled.
+// Screens 06 Companies and 07 Company page, with each company's career-page status.
 import { useState } from "react";
+import type { CompanyView } from "./api";
 import { css } from "./css";
 import { Icon } from "./icons";
 import type { App } from "./app";
@@ -7,7 +8,17 @@ import type { PostingView } from "./api";
 import { ageText, dayMonth, district, postedIso, salaryText, scoreColor, sourceText, tile, initial } from "./model";
 import { Switch } from "./pipeline";
 
-export type CompanyAgg = { key: string; name: string; district: string; open: number; last: string; best: number; watched: boolean; postings: PostingView[] };
+export type CompanyAgg = { key: string; name: string; district: string; open: number; last: string; best: number; watched: boolean; postings: PostingView[]; info?: CompanyView };
+
+// The export's career-page wording, from the crawler's discovery state.
+export function careerLine(info: CompanyView | undefined, now: Date): { text: string; color: string } {
+  if (!info || (info.careerStatus === "unknown" && !info.website)) return { text: "No website known", color: "var(--ink3)" };
+  if (info.careerStatus === "found") return { text: `Found${info.careerCheckedAt ? ` · checked ${ageText(info.careerCheckedAt, now)} ago` : ""}`, color: "var(--ok)" };
+  if (info.careerStatus === "none") return { text: "No career page found", color: "var(--ink3)" };
+  if (info.careerStatus === "needs_browser") return { text: "Page needs a browser, skipped", color: "var(--warn)" };
+  if (info.careerStatus === "error") return { text: "Could not be read", color: "var(--bad)" };
+  return { text: "Looking for it", color: "var(--info)" };
+}
 
 export function companies(app: App): CompanyAgg[] {
   const groups = new Map<string, PostingView[]>();
@@ -24,12 +35,13 @@ export function companies(app: App): CompanyAgg[] {
       best: Math.max(...ps.map((p) => p.score)),
       watched: app.watched.has(key),
       postings: ps,
+      info: app.data?.companies.find((c) => c.key === key),
     });
   }
   return out;
 }
 
-const GRID = "display:grid;grid-template-columns:minmax(0,2fr) minmax(0,1.2fr) 120px 120px 40px;column-gap:16px;padding:0 24px";
+const GRID = "display:grid;grid-template-columns:minmax(0,2fr) minmax(0,1.2fr) 120px 120px minmax(0,1.4fr) 40px;column-gap:16px;padding:0 24px";
 
 export function CompaniesScreen({ app }: { app: App }) {
   const [watchOnly, setWatchOnly] = useState(false);
@@ -47,7 +59,7 @@ export function CompaniesScreen({ app }: { app: App }) {
         </label>
       </div>
       <div className="co-grid" style={css(`${GRID};height:32px;align-items:center;border-bottom:1px solid var(--line);font-size:12px;color:var(--ink3);font-weight:500`)}>
-        <span>Company</span><span>District</span><span style={css("text-align:right")}>Open postings</span><span>Last posting</span><span />
+        <span>Company</span><span>District</span><span style={css("text-align:right")}>Open postings</span><span>Last posting</span><span>Career page</span><span />
       </div>
       <div style={css("flex:1;overflow-y:auto")}>
         {rows.map((c) => {
@@ -61,6 +73,9 @@ export function CompaniesScreen({ app }: { app: App }) {
               <span style={css("font-size:13px;color:var(--ink2)")}>{c.district}</span>
               <span style={css("font-size:13px;text-align:right")}>{c.open}</span>
               <span style={css("font-size:13px;color:var(--ink2)")}>{dayMonth(c.last)}</span>
+              <span style={css("display:flex;align-items:center;gap:6px;font-size:13px;color:var(--ink2);min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis")}>
+                <span style={css(`width:6px;height:6px;flex:none;border-radius:9999px;background:${careerLine(c.info, app.now).color}`)} />{careerLine(c.info, app.now).text}
+              </span>
               <button onClick={() => app.setWatch(c.name, c.key, !c.watched)} aria-pressed={c.watched} title="Watchlist" className="hv-nav"
                 style={css(`width:32px;height:32px;border:0;border-radius:10px;background:transparent;color:${c.watched ? "var(--acc-ink)" : "var(--ink3)"};display:flex;align-items:center;justify-content:center;cursor:pointer`)}>
                 <Icon id={c.watched ? "starf" : "star"} />
@@ -98,7 +113,10 @@ export function CompanyScreen({ app, companyKey }: { app: App; companyKey: strin
           <div style={{ ...css("position:absolute;left:24px;top:-24px;width:48px;height:48px;border-radius:10px;font-size:20px;font-weight:600;display:flex;align-items:center;justify-content:center;box-shadow:0 0 0 4px var(--sheet), var(--sh1)"), background: t.tileBg, color: t.tileInk }}>{initial(c.name)}</div>
           <div style={css("flex:1;min-width:0")}>
             <h1 style={css("margin:0;font-size:24px;font-weight:600;letter-spacing:-0.01em")}>{c.name}</h1>
-            <div style={css("margin-top:6px;display:flex;gap:16px;font-size:13px;color:var(--ink2)")}><span>{c.district}</span></div>
+            <div style={css("margin-top:6px;display:flex;gap:16px;font-size:13px;color:var(--ink2)")}>
+              {c.info?.website && <a href={c.info.website} target="_blank" rel="noopener">{c.info.website.replace(/^https?:\/\//, "")}</a>}
+              <span>{c.district}</span>
+            </div>
           </div>
           <label style={css("display:flex;align-items:center;gap:8px;font-size:13px;color:var(--ink2)")}>
             <Switch on={c.watched} onClick={() => app.setWatch(c.name, c.key, !c.watched)} label="Watchlist" />
@@ -151,7 +169,32 @@ export function CompanyScreen({ app, companyKey }: { app: App; companyKey: strin
             })}
           </div>
         </section>
+        <CareerSection app={app} c={c} />
       </div>
     </div>
+  );
+}
+
+function CareerSection({ app, c }: { app: App; c: CompanyAgg }) {
+  const [draft, setDraft] = useState("");
+  const line = careerLine(c.info, app.now);
+  const source = c.info?.websiteSource;
+  return (
+    <section>
+      <h2 style={css("margin:0;font-size:14px;font-weight:600")}>Career page</h2>
+      <p style={css("margin:4px 0 0;font-size:13px;color:var(--ink3)")}>Checked daily when it changes, weekly when it stays the same.</p>
+      <p style={css("margin:12px 0 0;display:flex;align-items:center;gap:8px;font-size:14px;color:var(--ink)")}>
+        <span style={css(`width:6px;height:6px;border-radius:9999px;background:${line.color}`)} />{line.text}
+        {c.info?.careerUrl && <a href={c.info.careerUrl} target="_blank" rel="noopener" style={css("font-size:13px;font-weight:500;display:flex;align-items:center;gap:4px")}>Open<Icon id="ext" /></a>}
+      </p>
+      {c.info?.website && source && <p style={css("margin:6px 0 0;font-size:13px;color:var(--ink3)")}>Website from {source === "owner" ? "you" : source === "contact email" ? "the contact e-mail in a posting" : source === "topdev" ? "TopDev" : "VietnamWorks"}.</p>}
+      <div style={css("margin-top:16px;display:flex;gap:8px;max-width:480px")}>
+        <input value={draft} onChange={(e) => setDraft(e.target.value)} placeholder={c.info?.website ? "Use a different website" : "Company website, e.g. tinhvan.com"} className="hv-ctl fc-acc"
+          onKeyDown={(e) => { if (e.key === "Enter" && draft.trim()) { void app.setWebsite(c.name, draft.trim()); setDraft(""); } }}
+          style={css("flex:1;height:32px;box-sizing:border-box;padding:0 12px;border-radius:10px;border:1px solid var(--line2);background:var(--sheet);font-size:13px")} />
+        <button disabled={!draft.trim()} onClick={() => { void app.setWebsite(c.name, draft.trim()); setDraft(""); }}
+          style={css(`height:32px;padding:0 12px;border-radius:10px;border:1px solid var(--line2);background:var(--sheet);font-size:13px;font-weight:500;cursor:${draft.trim() ? "pointer" : "not-allowed"};opacity:${draft.trim() ? 1 : 0.5}`)}>Save</button>
+      </div>
+    </section>
   );
 }
