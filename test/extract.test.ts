@@ -35,6 +35,9 @@ describe("facts", () => {
     expect(detectLevel("DevOps Engineer (Mid/Senior)", "")).toMatchObject({ level: "middle" });
     expect(detectLevel("DevOps Engineer", "At least 1 year of experience")).toMatchObject({ level: "junior" });
     expect(detectLevel("DevOps Engineer", "6+ years of experience")).toMatchObject({ level: "senior" });
+    expect(detectLevel("DevOps Engineer", "Experience: 1 year, 3 years")).toMatchObject({ level: "middle", years: 1 });
+    expect(detectLevel("DevOps Engineer", "2–5+ years of experience in DevOps")).toMatchObject({ level: "middle", years: 2 });
+    expect(detectLevel("DevOps Engineer", "A start-up with 5 years of growth.\nExperience: 1-3 years with Docker")).toMatchObject({ level: "middle", years: 1 });
   });
 
   it("reads work mode, English and certification support", () => {

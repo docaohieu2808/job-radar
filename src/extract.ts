@@ -129,8 +129,13 @@ export function detectLevel(title: string, text: string): { level: Level; years:
   else if (/\b(middle|mid|intermediate)\b/i.test(t)) level = "middle";
   else if (/\b(senior|sr\.?)\b/i.test(t)) level = "senior";
 
-  // "3+ years", "1-3 years", "từ 3 năm": the lower bound is the requirement, the upper bound tells whether middle fits.
-  const yearsHit = firstMatch(`${title}\n${text}`, /(\d{1,2})\s*\+?\s*(?:(?:-|–|~|to|đến)\s*(\d{1,2})\s*)?(?:năm|years?|yrs?)\b/i);
+  // "3+ years", "1-3 years", "2–5+ years", "từ 3 năm": the lower bound is the requirement, the upper bound tells
+  // whether middle fits. Lines about experience come first, so a company's age ("founded 5 years ago") is not read.
+  const YEARS = /(\d{1,2})\s*\+?\s*(?:(?:-|–|~|to|đến)\s*(\d{1,2})\s*\+?\s*)?(?:năm|years?|yrs?)\b/i;
+  // TopDev writes a range as "1 year, 3 years".
+  text = text.replace(/(\d+)\s*years?,\s*(\d+)\s*years?/gi, "$1-$2 years");
+  const experienceLines = text.split("\n").filter((l) => /experience|kinh nghiệm|\bexp\b|\bKN\b/i.test(l)).join("\n");
+  const yearsHit = firstMatch(title, YEARS) ?? firstMatch(experienceLines, YEARS) ?? firstMatch(text, YEARS);
   const years = yearsHit ? Number(yearsHit.match[1]) : null;
   const upper = yearsHit?.match[2] ? Number(yearsHit.match[2]) : years;
   if (level === "unknown" && years !== null && upper !== null) {
