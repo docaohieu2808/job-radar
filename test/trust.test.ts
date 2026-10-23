@@ -24,6 +24,8 @@ describe("trust", () => {
     expect(trustReasons({ ...base, firstSeenAt: daysAgo(60), reposted: true })[0].label).toBe("Open 60 days, reposted");
     expect(trustReasons({ ...base, companyName: "ABC Recruitment Solutions" })[0].label).toContain("Recruiter");
     expect(trustReasons({ ...base, description: "Our client, a leading bank, is hiring a DevOps engineer." })[0].label).toContain("Recruiter");
+    expect(trustReasons({ ...base, description: "- Trang chủ\n- Khách hàng của chúng tôi\n- Tuyển dụng" })).toEqual([]);
+    expect(trustReasons({ ...base, description: "Khách hàng của chúng tôi là một ngân hàng lớn" })[0].label).toContain("Recruiter");
     expect(trustReasons({ ...base, firstSeenAt: daysAgo(5), companyListsJobs: true })[0].label).toContain("careers page");
     expect(trustReasons({ ...base, sources: ["career"], siteMatch: 10 })[0].label).toContain("Website not confirmed");
   });
