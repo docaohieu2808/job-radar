@@ -21,10 +21,25 @@ const DAY = 24 * HOUR;
 const MAX_INTERVAL = 7 * DAY;
 const REDISCOVER_AFTER = 30 * DAY;
 const MAX_LISTING_CHILDREN = 3;
-const CAREER_WORDS = /tuyển dụng|tuyen-dung|tuyendung|careers?\b|\bjobs?\b|join us|join-us|recruit|cơ hội nghề nghiệp|co-hoi-nghe-nghiep|việc làm|viec-lam|work with us/i;
+const CAREER_WORDS = /tuyển dụng|tuyen-dung|tuyendung|careers?\b|\bjobs?\b|join us|join-us|recruit|cơ hội nghề nghiệp|co-hoi-nghe-nghiep|việc làm|viec-lam|work with us|talent[- ]acquisition|vacanc(y|ies)|we'?re hiring/i;
 // A listing page, not one posting: "/jobs", "/careers/openings", "Vị trí đang tuyển", "Cơ hội nghề nghiệp".
-const LISTING_WORDS = /\/(jobs|careers?|openings?|positions?|vacancies|tuyen-dung|co-hoi-nghe-nghiep|recruitment)\/?$|vị trí đang tuyển|việc làm đang tuyển|open (positions|roles)|all jobs|xem tất cả|cơ hội nghề nghiệp/i;
-const PROBE_PATHS = ["/careers", "/career", "/tuyen-dung", "/vi/tuyen-dung", "/jobs", "/recruitment"];
+const LISTING_WORDS = /\/(jobs|careers?|openings?|positions?|vacancies|tuyen-dung|co-hoi-nghe-nghiep|recruitment|talent-acquisition)\/?$|vị trí đang tuyển|việc làm đang tuyển|open (positions|roles)|all jobs|xem tất cả|cơ hội nghề nghiệp/i;
+export const CAREER_WORDS_FOR_TEST = CAREER_WORDS;
+const PROBE_PATHS = ["/careers", "/career", "/tuyen-dung", "/vi/tuyen-dung", "/jobs", "/recruitment", "/talent-acquisition"];
+// Job boards and social sites: a company's "open positions" button may point there, but those have their own sources.
+const JOB_BOARD_HOST = /(^|\.)(linkedin\.com|itviec\.com|topdev\.vn|topcv\.vn|vietnamworks\.com|careerviet\.vn|facebook\.com|glints\.com|indeed\.com)$/i;
+
+// Some companies keep their openings on a sister site ("Xem vị trí đang tuyển" on tinhvan.com goes to tso.vn).
+// A listing link off the site is followed when its own text says it is the list of openings.
+function offSiteListing(l: { url: string; text: string }, base: string): boolean {
+  if (sameSite(l.url, base)) return false;
+  try {
+    if (JOB_BOARD_HOST.test(new URL(l.url).hostname)) return false;
+  } catch {
+    return false;
+  }
+  return LISTING_WORDS.test(l.text);
+}
 const TWO_PART_TLDS = /\.(com|net|org|edu|gov|ac|co)\.(vn|uk|jp|sg|au)$/i;
 
 export function registrableDomain(host: string): string {
@@ -363,7 +378,7 @@ async function readCareerPage(task: Task): Promise<HandlerResult> {
   // Listing pages one level down (e.g. "Open positions", "Engineering") become career pages of their own.
   if (!page.depth) {
     const listings = all
-      .filter((l) => sameSite(l.url, task.url) && l.url !== task.url && !jobLinks.includes(l) && isListing(l))
+      .filter((l) => l.url !== task.url && !jobLinks.includes(l) && ((sameSite(l.url, task.url) && isListing(l)) || offSiteListing(l, task.url)))
       .slice(0, MAX_LISTING_CHILDREN);
     for (const l of listings) await addCareerPage(c.id, l.url, null, 1);
   }

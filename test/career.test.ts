@@ -76,6 +76,11 @@ describe("career pages", () => {
     expect(normalizeUrl("https://efl.global/index%2Ephp/company/careers#top")).toBe("https://efl.global/index.php/company/careers");
   });
 
+  it("recognises an English 'Talent Acquisition' menu entry", async () => {
+    const { CAREER_WORDS_FOR_TEST } = await import("../src/sources/career.js");
+    expect(CAREER_WORDS_FOR_TEST.test("Talent Acquisition /talent-acquisition")).toBe(true);
+  });
+
   it("tries the usual spellings of a site", async () => {
     const { siteVariants } = await import("../src/sources/career.js");
     expect(siteVariants("https://fsn.vn")).toEqual(["https://fsn.vn", "https://www.fsn.vn", "http://fsn.vn", "http://www.fsn.vn"]);
