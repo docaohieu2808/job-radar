@@ -32,6 +32,8 @@ export function scorePosting(facts: Facts, weights: Weights = DEFAULT_WEIGHTS): 
   const gap = facts.stack.filter((s) => !OWNER_STACK.has(s));
   for (const skill of have.slice(0, 5)) add(4, skill);
   for (const skill of gap.slice(0, 3)) add(-3, `${skill} gap`);
+  // Nothing from the DevOps toolbox named at all: usually a different job with an overlapping title.
+  if (facts.stack.length === 0) add(-15, "No DevOps stack named");
 
   cat = "level";
   const levelPoints: Record<Facts["level"], number> = {
@@ -47,6 +49,7 @@ export function scorePosting(facts: Facts, weights: Weights = DEFAULT_WEIGHTS): 
   if (facts.english === "fluent") add(-6, "Fluent English");
   else if (facts.english === "good") add(-3, "Good English");
   if (facts.vietnameseText) add(3, "Vietnamese posting");
+  if (facts.foreignLanguage) add(-25, `${facts.foreignLanguage} required`);
 
   cat = "benefits";
   if (facts.certSupport) add(12, "Cert sponsorship");

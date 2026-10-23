@@ -16,6 +16,8 @@ export type Facts = {
   english: English;
   certSupport: boolean;
   abroad: boolean;
+  // A language other than English or Vietnamese the role requires, e.g. "Japanese N2"; null when none is required.
+  foreignLanguage: string | null;
   vietnameseText: boolean;
   excerpts: Record<string, string>;
 };
@@ -174,12 +176,40 @@ export function detectEnglish(text: string): { english: English; excerpt?: strin
   return { english: "none" };
 }
 
+// Language exams and classes: paying for these is not the technical certification the owner is after.
+const LANGUAGE_CERT = /jlpt|\bbjt\b|nat-test|ielts|toeic|toefl|topik|\bhsk\b|tiếng (nhật|hàn|trung|anh)|japanese|korean|chinese|english/i;
+
+// Sponsorship of technical certifications (AWS, CKA, ...). A line that only funds language exams does not count.
 export function detectCertSupport(text: string): { cert: boolean; excerpt?: string } {
-  const hit = firstMatch(
-    text,
-    /(hỗ trợ|tài trợ|chi trả|sponsor|support|reimburs|cover|funded|paid)[^.\n]{0,60}(chứng chỉ|certification|certificate|exam)|(chứng chỉ|certification|certificate)[^.\n]{0,40}(hỗ trợ|tài trợ|sponsor|support|reimburs|paid|funded)/i,
-  );
-  return hit ? { cert: true, excerpt: hit.excerpt } : { cert: false };
+  const pattern = /(hỗ trợ|tài trợ|chi trả|sponsor|support|reimburs|cover|funded|paid)[^.\n]{0,60}(chứng chỉ|certification|certificate|exam)|(chứng chỉ|certification|certificate)[^.\n]{0,40}(hỗ trợ|tài trợ|sponsor|support|reimburs|paid|funded)/i;
+  const TECH = /\baws\b|azure|\bgcp\b|google cloud|\bcka\b|\bckad\b|\bcks\b|kubernetes|terraform|hashicorp|linux|\brhc|\bccna\b|\bit\b|chuyên môn|kỹ thuật|technical|professional|cloud/i;
+  // Sentence by sentence: a language class and a cloud exam can share one bullet.
+  for (const line of text.split(/\n|(?<=[.;!?])\s+/)) {
+    if (!pattern.test(line)) continue;
+    if (LANGUAGE_CERT.test(line) && !TECH.test(line)) continue;
+    return { cert: true, excerpt: line.trim().slice(0, 240) };
+  }
+  return { cert: false };
+}
+
+// A requirement for Japanese, Korean or Chinese ("Tiếng Nhật N2 trở lên", "JLPT N3", "Business-level Korean").
+// Lines that offer classes or allowances, or call the language a plus, are not requirements.
+export function detectForeignLanguage(text: string): { language: string | null; excerpt?: string } {
+  const NAMES: [string, RegExp][] = [
+    ["Japanese", /tiếng nhật|japanese|jlpt|nihongo/i],
+    ["Korean", /tiếng hàn|korean|topik/i],
+    ["Chinese", /tiếng trung|chinese|mandarin|\bhsk\b/i],
+  ];
+  const NOT_REQUIRED = /ưu tiên|lợi thế|là một lợi thế|điểm cộng|\bplus\b|advantage|preferred|nice to have|bonus|lớp|khóa học|khoá học|class|course|phụ cấp|allowance|hỗ trợ|support/i;
+  const REQUIRED = /\bn[1-3]\b|jlpt|topik|\bhsk\b|trở lên|thành thạo|giao tiếp|business|fluent|required|yêu cầu|bắt buộc|tốt|good|native/i;
+  for (const line of text.split("\n")) {
+    for (const [name, re] of NAMES) {
+      if (!re.test(line) || NOT_REQUIRED.test(line) || !REQUIRED.test(line)) continue;
+      const level = /\bn([1-3])\b/i.exec(line);
+      return { language: level && name === "Japanese" ? `Japanese N${level[1]}` : name, excerpt: line.trim().slice(0, 240) };
+    }
+  }
+  return { language: null };
 }
 
 export function detectAbroad(text: string): { abroad: boolean; excerpt?: string } {
@@ -198,6 +228,8 @@ export function isVietnameseText(text: string): boolean {
 // search even when their title mentions a platform or the cloud, unless they are explicitly DevOps or SRE.
 export function isRelevantTitle(title: string, keywords: string[]): boolean {
   if (/\bdata (engineer|scientist|analyst)|\bdeveloper\b|lập trình viên/i.test(title) && !/devops|sre|site reliability/i.test(title)) return false;
+  // Bridge engineers, interpreters and testers are other jobs that share words like "system engineer".
+  if (/\bbrse\b|bridge (system )?(se|engineer)|kỹ sư cầu nối|comtor|biên phiên dịch|interpreter|\btester\b|\bqa\b|\bqc\b|quality (assurance|control)|kiểm thử/i.test(title) && !/devops|sre|site reliability/i.test(title)) return false;
   const t = title.toLowerCase();
   return keywords.some((k) => {
     const word = k.trim().toLowerCase();
@@ -232,6 +264,8 @@ export function extractFacts(input: { title: string; text: string; tags?: string
   if (cert.excerpt) excerpts.certSupport = cert.excerpt;
   const abroad = detectAbroad(input.text);
   if (abroad.excerpt) excerpts.abroad = abroad.excerpt;
+  const foreign = detectForeignLanguage(`${input.title}\n${input.text}`);
+  if (foreign.excerpt) excerpts.foreignLanguage = foreign.excerpt;
   return {
     salary,
     workMode: mode.mode,
@@ -241,6 +275,7 @@ export function extractFacts(input: { title: string; text: string; tags?: string
     english: english.english,
     certSupport: cert.cert,
     abroad: abroad.abroad,
+    foreignLanguage: foreign.language,
     vietnameseText: isVietnameseText(input.text),
     excerpts,
   };

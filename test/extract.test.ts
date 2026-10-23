@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { detectCertSupport, detectEnglish, detectLevel, detectStack, detectWorkMode, isRelevantTitle, isWantedLocation, parseSalary } from "../src/extract.js";
+import { detectCertSupport, detectForeignLanguage, detectEnglish, detectLevel, detectStack, detectWorkMode, isRelevantTitle, isWantedLocation, parseSalary } from "../src/extract.js";
 import { scorePosting } from "../src/score.js";
 import { extractFacts } from "../src/extract.js";
 import { DEFAULT_PREFS } from "../src/prefs.js";
@@ -77,5 +77,33 @@ describe("scorePosting", () => {
     expect(labels).toEqual(expect.arrayContaining(["Cert sponsorship", "Kubernetes", "Azure gap", "Middle level", "Onsite abroad", "Salary up to 27M"]));
     expect(score).toBeGreaterThanOrEqual(80);
     expect(score).toBeLessThanOrEqual(100);
+  });
+});
+
+describe("scoring traps from real postings", () => {
+  it("does not count language-exam fees as certification sponsorship", () => {
+    expect(detectCertSupport("Tham gia lớp tiếng Nhật chuyên môn với giáo viên Nhật. Hỗ trợ lệ phí thi tuyển các chứng chỉ như: BJT, JLPT…").cert).toBe(false);
+    expect(detectCertSupport("Company sponsors AWS and CKA certification exams").cert).toBe(true);
+  });
+
+  it("finds a required Japanese level but not a class, allowance or plus", () => {
+    expect(detectForeignLanguage("- Tiếng Nhật N2 trở lên, giao tiếp tốt.").language).toBe("Japanese N2");
+    expect(detectForeignLanguage("- Phụ cấp hấp dẫn: Ăn trưa, đi lại, tiếng Nhật, thâm niên").language).toBeNull();
+    expect(detectForeignLanguage("- Biết tiếng Nhật là một lợi thế").language).toBeNull();
+    expect(detectForeignLanguage("Experience with GCP n2-standard machines is required").language).toBeNull();
+  });
+
+  it("keeps bridge engineers and testers out", () => {
+    expect(isRelevantTitle("BRIDGE SYSTEM ENGINEER (BRSE)", ["system engineer", "devops"])).toBe(false);
+    expect(isRelevantTitle("QA Engineer", ["engineer"])).toBe(false);
+    expect(isRelevantTitle("DevOps Engineer (QA automation)", ["devops"])).toBe(true);
+  });
+
+  it("scores the Cube System BrSE posting low", async () => {
+    const { scorePosting } = await import("../src/score.js");
+    const text = "Mức lương\nLên tới $2,000/tháng\n- Tiếng Nhật N2 trở lên, giao tiếp tốt.\n- Có kiến thức vận hành các dịch vụ đám mây (cloud).\n- Hỗ trợ lệ phí thi tuyển các chứng chỉ như: BJT, JLPT…\n- Cơ hội được làm việc và công tác tại Nhật Bản.";
+    const facts = extractFacts({ title: "BRIDGE SYSTEM ENGINEER (BRSE)", text, salaryText: "Lên tới $2,000/tháng" });
+    expect(facts.certSupport).toBe(false);
+    expect(scorePosting(facts).score).toBeLessThan(50);
   });
 });
