@@ -18,7 +18,8 @@
   },
   "dependencies": {
     "pg": "8.23.1",
-    "cheerio": "1.2.0"
+    "cheerio": "1.2.0",
+    "undici": "8.12.3"
   },
   "devDependencies": {
     "@types/node": "26.6.5",

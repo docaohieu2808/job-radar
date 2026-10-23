@@ -4,7 +4,7 @@
 import { createHash } from "node:crypto";
 import * as cheerio from "cheerio";
 import { pool } from "../db.js";
-import { fetchText } from "../http.js";
+import { fetchSite } from "../http.js";
 import { enqueue, pauseHost } from "../queue.js";
 import { robotsAllow } from "../robots.js";
 import { loadPrefs } from "../settings.js";
@@ -128,8 +128,18 @@ async function company(id: number): Promise<{ id: number; name: string } | null>
 }
 
 async function setCareerStatus(companyId: number, status: string): Promise<void> {
-  await pool.query("UPDATE companies SET career_status = $2, career_checked_at = now() WHERE id = $1", [companyId, status]);
+  await pool.query("UPDATE companies SET career_status = $2, career_checked_at = now(), career_failures = 0 WHERE id = $1", [companyId, status]);
 }
+
+// The same site under the spellings that answer in practice: https, https with www, then plain http.
+export function siteVariants(url: string): string[] {
+  const u = new URL(url);
+  const bare = u.hostname.replace(/^www\./, "");
+  const out = [`https://${bare}`, `https://www.${bare}`, `http://${bare}`, `http://www.${bare}`].map((x) => `${x}${u.pathname === "/" ? "" : u.pathname}`);
+  return [...new Set([url.replace(/\/$/, ""), ...out])];
+}
+
+const RETRY_AFTER_FAILURES = [24 * HOUR, 7 * 24 * HOUR];
 
 async function addCareerPage(companyId: number, rawUrl: string, ats: Ats | null, depth: number): Promise<void> {
   const url = normalizeUrl(rawUrl);
@@ -193,9 +203,13 @@ export const career: Source = {
         return await discover(task);
       } catch (err) {
         const message = await siteFailed(task, err);
-        await pool.query("UPDATE companies SET career_status = 'error', career_checked_at = now() WHERE id = $1", [Number(task.payload.companyId)]);
+        const { rows } = await pool.query<{ career_failures: number }>(
+          "UPDATE companies SET career_status = 'error', career_checked_at = now(), career_failures = career_failures + 1 WHERE id = $1 RETURNING career_failures",
+          [Number(task.payload.companyId)],
+        );
         console.warn(`career-discover ${task.url}: ${message}`);
-        return { recrawlAfterSeconds: REDISCOVER_AFTER };
+        // A first failure is often passing; retry soon, then less and less often.
+        return { recrawlAfterSeconds: RETRY_AFTER_FAILURES[(rows[0]?.career_failures ?? 1) - 1] ?? REDISCOVER_AFTER };
       }
     },
 
@@ -227,14 +241,30 @@ async function discover(task: Task): Promise<HandlerResult> {
     await setCareerStatus(c.id, "none");
     return { recrawlAfterSeconds: REDISCOVER_AFTER };
   }
-  const html = await fetchText(task.url, { browserLike: true });
-  let fetched = 1;
+  // The first spelling of the site that answers; a refusal stops here (the host is paused), other errors try the next.
+  let html: string | null = null;
+  let base = task.url;
+  let fetched = 0;
+  let lastError: unknown = null;
+  for (const v of siteVariants(task.url)) {
+    fetched++;
+    try {
+      html = await fetchSite(v, { browserLike: true });
+      base = v;
+      break;
+    } catch (err) {
+      if (err instanceof HostRefusedError) throw err;
+      lastError = err;
+    }
+  }
+  if (html === null) throw lastError;
+  if (base !== task.url) await pool.query("UPDATE companies SET website = $2 WHERE id = $1", [c.id, new URL(base).origin]);
   const text = mainText(html);
   if (needsBrowser(html, text)) {
     await setCareerStatus(c.id, "needs_browser");
     return { fetched, recrawlAfterSeconds: REDISCOVER_AFTER };
   }
-  const all = links(html, task.url);
+  const all = links(html, base);
   const atsLink = all.map((l) => ({ l, ats: detectAts(l.url) })).find((x) => x.ats);
   if (atsLink) {
     await addCareerPage(c.id, atsLink.l.url, atsLink.ats, 0);
@@ -242,14 +272,14 @@ async function discover(task: Task): Promise<HandlerResult> {
     return { fetched };
   }
   const candidates = all
-    .filter((l) => sameSite(l.url, task.url) && CAREER_WORDS.test(`${l.text} ${new URL(l.url).pathname}`))
+    .filter((l) => sameSite(l.url, base) && CAREER_WORDS.test(`${l.text} ${new URL(l.url).pathname}`))
     .sort((a, b) => Number(CAREER_WORDS.test(b.text)) - Number(CAREER_WORDS.test(a.text)));
   let found = candidates[0]?.url ?? null;
   for (const path of found ? [] : PROBE_PATHS) {
-    const url = new URL(path, task.url).toString();
+    const url = new URL(path, base).toString();
     if (!(await robotsAllow(url))) continue;
     try {
-      const page = await fetchText(url, { browserLike: true });
+      const page = await fetchSite(url, { browserLike: true });
       fetched++;
       if (CAREER_WORDS.test(mainText(page))) {
         found = url;
@@ -299,7 +329,7 @@ async function readCareerPage(task: Task): Promise<HandlerResult> {
     await done("none", MAX_INTERVAL);
     return { recrawlAfterSeconds: MAX_INTERVAL };
   }
-  const html = await fetchText(task.url, { browserLike: true });
+  const html = await fetchSite(task.url, { browserLike: true });
   const text = mainText(html);
   if (needsBrowser(html, text)) {
     await done("needs_browser", MAX_INTERVAL);
@@ -365,7 +395,7 @@ async function readCareerPage(task: Task): Promise<HandlerResult> {
 async function readCareerJob(task: Task): Promise<HandlerResult> {
   const c = await company(Number(task.payload.companyId));
   if (!c || !(await robotsAllow(task.url))) return {};
-  const html = await fetchText(task.url, { browserLike: true });
+  const html = await fetchSite(task.url, { browserLike: true });
   const $ = cheerio.load(html);
   const text = mainText(html);
   // The page's own heading is cleaner than the link text, which may glue salary and deadline onto the title.

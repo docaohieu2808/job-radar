@@ -76,6 +76,11 @@ describe("career pages", () => {
     expect(normalizeUrl("https://efl.global/index%2Ephp/company/careers#top")).toBe("https://efl.global/index.php/company/careers");
   });
 
+  it("tries the usual spellings of a site", async () => {
+    const { siteVariants } = await import("../src/sources/career.js");
+    expect(siteVariants("https://fsn.vn")).toEqual(["https://fsn.vn", "https://www.fsn.vn", "http://fsn.vn", "http://www.fsn.vn"]);
+  });
+
   it("spots an empty JavaScript shell", () => {
     expect(needsBrowser('<div id="root"></div><script src="/app.js"></script>', "")).toBe(true);
     expect(needsBrowser("<main>long text</main>", "x".repeat(500))).toBe(false);
