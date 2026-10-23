@@ -65,7 +65,7 @@ export async function ensureCompany(
   name: string,
   website: { url: string | null; source: string } | null,
   client: Client = pool,
-  discoveredVia: "posting" | "directory" | "link" = "posting",
+  discoveredVia: "posting" | "directory" | "link" | "ats" = "posting",
 ): Promise<number> {
   const key = normalizeKey(name);
   const { rows } = await client.query<{ id: string; website: string | null; website_source: string | null }>(

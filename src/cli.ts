@@ -6,6 +6,8 @@ import { ensureCompany, websiteFromEmails } from "./companies.js";
 import { normalizeUrl } from "./sources/career.js";
 import { loadPrefs } from "./settings.js";
 import { addCandidate } from "./sources/discovery.js";
+import { addCareerPage } from "./sources/career.js";
+import { detectAts } from "./sources/ats.js";
 
 const [command, ...args] = process.argv.slice(2);
 try {
@@ -57,6 +59,30 @@ try {
     }
     console.log(`imported ${added} new candidates from ${lines.length} lines`);
   }
+  else if (command === "import-ats-boards") {
+    // "kind<TAB>board" lines on stdin (tools/common-crawl-ats.py): each public board becomes a company whose
+    // openings are read through the ATS API daily; only DevOps-family roles open to Vietnam are kept.
+    let input = "";
+    for await (const chunk of process.stdin) input += chunk;
+    const base: Record<string, string> = { greenhouse: "https://boards.greenhouse.io/", ashby: "https://jobs.ashbyhq.com/", lever: "https://jobs.lever.co/" };
+    let added = 0;
+    const lines = input.split("\n").filter((l) => l && !l.startsWith("#"));
+    for (const line of lines) {
+      const [kind, board] = line.split("\t").map((x) => x.trim());
+      if (!base[kind] || !/^[a-z0-9][a-z0-9._-]*$/i.test(board ?? "")) continue;
+      const url = `${base[kind]}${board}`;
+      const ats = detectAts(url);
+      if (!ats) continue;
+      const known = await pool.query("SELECT 1 FROM career_pages WHERE ats_kind::jsonb = $1::jsonb LIMIT 1", [JSON.stringify(ats)]);
+      if (known.rowCount) continue;
+      const name = board.replace(/[-_.]+/g, " ").replace(/\b\w/g, (ch) => ch.toUpperCase());
+      const id = await ensureCompany(name, null, pool, "ats");
+      await addCareerPage(id, url, ats, 0);
+      await pool.query("UPDATE companies SET career_status = 'found', career_checked_at = now() WHERE id = $1", [id]);
+      added++;
+    }
+    console.log(`imported ${added} new boards from ${lines.length} lines`);
+  }
   else if (command === "matches") {
     // The Inbox as plain text, for answering "any good jobs today?" from a terminal or a chat session:
     // open, untriaged postings at or above the Inbox threshold, first seen in the last N days (default 7).
@@ -84,7 +110,7 @@ try {
       console.log(`  ${r.url ?? ""}  (web: https://jobs.docaohieu.com/#/jobs/${r.id})`);
     }
   }
-  else throw new Error("usage: enqueue <kind> <url> | rescore | sync-companies | normalize-career-pages | matches [days] | import-candidates < tsv");
+  else throw new Error("usage: enqueue <kind> <url> | rescore | sync-companies | normalize-career-pages | matches [days] | import-candidates < tsv | import-ats-boards < tsv");
   console.log("ok");
 } finally {
   await pool.end();

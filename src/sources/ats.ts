@@ -2,9 +2,10 @@
 import { fetchJson, fetchText } from "../http.js";
 import { htmlToText } from "../extract.js";
 
-export type Ats = { kind: "greenhouse" | "lever" | "smartrecruiters" | "workday"; board: string; host?: string; site?: string };
+export type Ats = { kind: "greenhouse" | "lever" | "smartrecruiters" | "workday" | "ashby"; board: string; host?: string; site?: string };
 
-export type AtsJob = { id: string; title: string; url: string; location: string; description: string | null; detail?: () => Promise<string> };
+// `company` is the employer's name as the ATS states it (Greenhouse), used to name companies found by board slug.
+export type AtsJob = { id: string; title: string; url: string; location: string; description: string | null; detail?: () => Promise<string>; company?: string };
 
 export function detectAts(link: string): Ats | null {
   let u: URL;
@@ -19,6 +20,7 @@ export function detectAts(link: string): Ats | null {
     return board && board !== "embed" ? { kind: "greenhouse", board } : null;
   }
   if (u.hostname === "jobs.lever.co" && seg[0]) return { kind: "lever", board: seg[0] };
+  if (u.hostname === "jobs.ashbyhq.com" && seg[0]) return { kind: "ashby", board: seg[0] };
   if (/^(careers|jobs)\.smartrecruiters\.com$/.test(u.hostname) && seg[0]) return { kind: "smartrecruiters", board: seg[0] };
   const wd = /^([a-z0-9-]+)\.wd\d+\.myworkdayjobs\.com$/i.exec(u.hostname);
   if (wd) {
@@ -35,10 +37,27 @@ const WORKDAY_SEARCHES = ["devops", "sre", "cloud", "platform"];
 
 export async function listAtsJobs(ats: Ats): Promise<AtsJob[]> {
   if (ats.kind === "greenhouse") {
-    const body = await fetchJson<{ jobs: { id: number; title: string; absolute_url: string; location?: { name?: string }; content?: string }[] }>(
-      `https://boards-api.greenhouse.io/v1/boards/${encodeURIComponent(ats.board)}/jobs?content=true`,
+    // The listing without job bodies is small even for boards with hundreds of roles; bodies are fetched only for
+    // the roles that pass the title and place filters.
+    const board = `https://boards-api.greenhouse.io/v1/boards/${encodeURIComponent(ats.board)}`;
+    const body = await fetchJson<{ jobs: { id: number; title: string; absolute_url: string; location?: { name?: string }; company_name?: string }[] }>(`${board}/jobs`);
+    return body.jobs.map((j) => ({
+      id: String(j.id), title: j.title, url: j.absolute_url, location: j.location?.name ?? "", description: null, company: j.company_name,
+      detail: async () => htmlToText(decode((await fetchJson<{ content?: string }>(`${board}/jobs/${j.id}`)).content ?? "")),
+    }));
+  }
+  if (ats.kind === "ashby") {
+    const body = await fetchJson<{ jobs: { id: string; title: string; jobUrl: string; location?: string; isRemote?: boolean; secondaryLocations?: { location?: string }[]; descriptionPlain?: string; isListed?: boolean }[] }>(
+      `https://api.ashbyhq.com/posting-api/job-board/${encodeURIComponent(ats.board)}`,
     );
-    return body.jobs.map((j) => ({ id: String(j.id), title: j.title, url: j.absolute_url, location: j.location?.name ?? "", description: htmlToText(decode(j.content ?? "")) }));
+    return body.jobs.filter((j) => j.isListed !== false).map((j) => {
+      const places = [j.location ?? "", ...(j.secondaryLocations ?? []).map((l) => l.location ?? "")].filter(Boolean);
+      const location = [...new Set(places)].join("; ");
+      return {
+        id: j.id, title: j.title, url: j.jobUrl, description: j.descriptionPlain ?? "",
+        location: j.isRemote && !/remote/i.test(location) ? `Remote (${location || "anywhere"})` : location,
+      };
+    });
   }
   if (ats.kind === "lever") {
     const body = await fetchJson<{ id: string; text: string; hostedUrl: string; categories?: { location?: string }; descriptionPlain?: string; lists?: { text: string; content: string }[]; additionalPlain?: string }[]>(

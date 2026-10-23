@@ -17,6 +17,7 @@ import { detectAts, listAtsJobs, type Ats } from "./ats.js";
 import { noteOutboundLinks } from "./discovery.js";
 import { readInterval } from "../relevance.js";
 import { postingConfidence, siteMatch } from "../trust.js";
+import { remoteOpenToVietnam } from "../extract.js";
 import { HOUR, type Source } from "./types.js";
 import type { Task } from "../queue.js";
 import type { HandlerResult } from "../handlers/index.js";
@@ -121,10 +122,20 @@ export function links(html: string, base: string): Link[] {
 }
 
 // Postings from global ATS boards are kept only for Vietnam, Ho Chi Minh City or remote Asia.
+// Offices in HCMC, or remote work open to someone in Vietnam ("Remote - APAC", plain "Remote"); not
+// "Remote - European Union" or "Remote US" (src/extract.ts holds the region rule).
 export function wantedCareerLocation(location: string): boolean {
   if (!location.trim()) return true;
   if (/viet ?nam|việt nam|ho chi minh|hồ chí minh|hcm|saigon|sài gòn/i.test(location)) return true;
-  return /remote/i.test(location) && /apac|asia|vietnam|anywhere|worldwide/i.test(location);
+  if (!/remote/i.test(location)) return false;
+  return location.split(/;|\|/).some((part) => /remote/i.test(part) && remoteOpenToVietnam(part.replace(/remote/gi, "")));
+}
+
+// A plain "Remote" role whose text limits it to one country or region elsewhere.
+const ELSEWHERE_ONLY = /(must|need to|required to) (be )?(located|based|reside|live|work) (in|from) (the )?(us|u\.s\.|united states|usa|canada|uk|united kingdom|europe|eu|emea|latam|india)\b|\b(us|u\.s\.|usa|uk|eu)[- ]based (candidates|applicants|only)|\b(us|usa|u\.s\.|uk|eu|europe) only\b|(eligible|authori[sz]ed|legally able) to work in the (us|u\.s\.|united states|uk|united kingdom|eu)\b/i;
+
+export function remoteElsewhereOnly(description: string): boolean {
+  return ELSEWHERE_ONLY.test(description);
 }
 
 // A job title names a role; service and product pages ("Cloud & DevOps Services", "Infrastructure Advisory") do not.
@@ -203,9 +214,14 @@ async function saveCareerPosting(companyName: string, p: { id: string; url: stri
   });
 }
 
-async function readAts(companyName: string, ats: Ats): Promise<{ fetched: number; found: number }> {
+async function readAts(c: { id: number; name: string }, ats: Ats): Promise<{ fetched: number; found: number }> {
   const prefs = await loadPrefs();
-  const jobs = (await listAtsJobs(ats)).filter((j) => isRelevantTitle(j.title, prefs.keywords) && wantedCareerLocation(j.location));
+  const all = await listAtsJobs(ats);
+  // A company first known only by its board slug ("whalarinc") takes the name the ATS gives ("Whalar").
+  const stated = all.find((j) => j.company)?.company?.trim();
+  if (stated) await pool.query("UPDATE companies SET name = $2 WHERE id = $1 AND discovered_via = 'ats' AND name <> $2", [c.id, stated]);
+  const companyName = stated || c.name;
+  const jobs = all.filter((j) => isRelevantTitle(j.title, prefs.keywords) && wantedCareerLocation(j.location));
   const ids = jobs.map((j) => `${ats.kind}:${ats.board}:${j.id}`);
   const unknown = new Set(await markSeen("career", ids));
   let fetched = 1;
@@ -217,6 +233,7 @@ async function readAts(companyName: string, ats: Ats): Promise<{ fetched: number
       description = await j.detail();
       fetched++;
     }
+    if (/remote/i.test(j.location) && description && remoteElsewhereOnly(description)) continue;
     await saveCareerPosting(companyName, { id, url: j.url, title: j.title, location: j.location, description: description ?? j.title });
   }
   return { fetched, found: jobs.length };
@@ -235,6 +252,8 @@ async function siteFailed(task: Task, err: unknown): Promise<string> {
 export const career: Source = {
   name: "career",
   seeds: [],
+  // Thousands of boards share these API hosts; one request every two seconds each stays well inside their limits.
+  hostIntervalSeconds: { "boards-api.greenhouse.io": 2, "api.ashbyhq.com": 2, "api.lever.co": 2 },
   handlers: {
     // Website home page -> career page (or an ATS board). Re-checked weekly when nothing was found.
     "career-discover": async (task) => {
@@ -364,7 +383,7 @@ async function readCareerPage(task: Task): Promise<HandlerResult> {
   };
 
   if (page.ats_kind) {
-    const r = await readAts(c.name, JSON.parse(page.ats_kind) as Ats);
+    const r = await readAts(c, JSON.parse(page.ats_kind) as Ats);
     await done("found", daily, { found: r.found });
     return { fetched: r.fetched, recrawlAfterSeconds: daily };
   }
@@ -386,7 +405,7 @@ async function readCareerPage(task: Task): Promise<HandlerResult> {
   if (atsLink) {
     // The page only points to an ATS board: read the board from now on.
     await pool.query("UPDATE career_pages SET kind = 'ats', ats_kind = $2 WHERE id = $1", [page.id, JSON.stringify(atsLink.ats)]);
-    const r = await readAts(c.name, atsLink.ats!);
+    const r = await readAts(c, atsLink.ats!);
     await done("found", daily, { found: r.found });
     return { fetched: 1 + r.fetched, recrawlAfterSeconds: daily };
   }

@@ -268,7 +268,8 @@ export function isWantedLocation(location: string, workMode: WorkMode, other = "
   return !OTHER_CITY.test(location);
 }
 
-// `location` "Remote (...)" comes from remote boards; it settles the work mode even when the description does not say.
+// A location naming remote work ("Remote (...)" from remote boards, "Remote - APAC" from ATS boards) settles the work
+// mode even when the description does not say.
 export function extractFacts(input: { title: string; text: string; tags?: string[]; salaryText?: string; location?: string }): Facts {
   const all = `${input.title}\n${(input.tags ?? []).join(", ")}\n${input.text}`;
   const excerpts: Record<string, string> = {};
@@ -276,7 +277,7 @@ export function extractFacts(input: { title: string; text: string; tags?: string
   if (salary && input.salaryText) excerpts.salary = input.salaryText;
   const level = detectLevel(input.title, input.text);
   if (level.excerpt) excerpts.years = level.excerpt;
-  const mode = /^\s*remote\b/i.test(input.location ?? "")
+  const mode = /\bremote\b/i.test(input.location ?? "")
     ? { mode: "remote" as const, excerpt: input.location }
     : detectWorkMode(`${(input.tags ?? []).join("\n")}\n${input.text}`, input.title);
   if (mode.excerpt) excerpts.workMode = mode.excerpt;

@@ -104,6 +104,22 @@ describe("career pages", () => {
     }
   });
 
+  it("keeps ATS roles in HCMC or remote open to Vietnam, not remote elsewhere", async () => {
+    const { wantedCareerLocation, remoteElsewhereOnly } = await import("../src/sources/career.js");
+    const { detectAts } = await import("../src/sources/ats.js");
+    expect(detectAts("https://jobs.ashbyhq.com/acme/123")).toEqual({ kind: "ashby", board: "acme" });
+    expect(wantedCareerLocation("Remote - APAC")).toBe(true);
+    expect(wantedCareerLocation("Remote")).toBe(true);
+    expect(wantedCareerLocation("Ho Chi Minh City")).toBe(true);
+    expect(wantedCareerLocation("Remote - European Union")).toBe(false);
+    expect(wantedCareerLocation("Remote Canada; Remote US")).toBe(false);
+    expect(wantedCareerLocation("Remote US; Remote (anywhere)")).toBe(true);
+    expect(wantedCareerLocation("Berlin")).toBe(false);
+    expect(remoteElsewhereOnly("Candidates must be located in the US.")).toBe(true);
+    expect(remoteElsewhereOnly("You must be authorized to work in the United States.")).toBe(true);
+    expect(remoteElsewhereOnly("We hire across Asia and Europe.")).toBe(false);
+  });
+
   it("tries the usual spellings of a site", async () => {
     const { siteVariants } = await import("../src/sources/career.js");
     expect(siteVariants("https://fsn.vn")).toEqual(["https://fsn.vn", "https://www.fsn.vn", "http://fsn.vn", "http://www.fsn.vn"]);
