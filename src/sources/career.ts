@@ -56,6 +56,16 @@ export function needsBrowser(html: string, text: string): boolean {
 
 export type Link = { url: string; text: string };
 
+// One page, one address: no fragment, no www, no trailing slash, "%2E" read as ".".
+export function normalizeUrl(raw: string, base?: string): string {
+  const u = new URL(raw, base);
+  u.hash = "";
+  u.hostname = u.hostname.replace(/^www\./, "");
+  u.pathname = u.pathname.replace(/%2E/gi, ".");
+  if (u.pathname.length > 1) u.pathname = u.pathname.replace(/\/+$/, "");
+  return u.toString();
+}
+
 export function isListing(l: Link): boolean {
   return LISTING_WORDS.test(new URL(l.url).pathname) || LISTING_WORDS.test(l.text);
 }
@@ -67,13 +77,8 @@ export function links(html: string, base: string): Link[] {
     const href = $(el).attr("href")!;
     if (/^(mailto|tel|javascript):|^#/i.test(href)) return;
     try {
-      const u = new URL(href, base);
-      u.hash = "";
-      // One page, one address: no www, no trailing slash.
-      u.hostname = u.hostname.replace(/^www\./, "");
-      if (u.pathname.length > 1) u.pathname = u.pathname.replace(/\/+$/, "");
+      const key = normalizeUrl(href, base);
       const text = $(el).text().replace(/\s+/g, " ").trim();
-      const key = u.toString();
       if (!out.has(key) || (text && !out.get(key)!.text)) out.set(key, { url: key, text });
     } catch {
       /* not a URL */
@@ -126,7 +131,8 @@ async function setCareerStatus(companyId: number, status: string): Promise<void>
   await pool.query("UPDATE companies SET career_status = $2, career_checked_at = now() WHERE id = $1", [companyId, status]);
 }
 
-async function addCareerPage(companyId: number, url: string, ats: Ats | null, depth: number): Promise<void> {
+async function addCareerPage(companyId: number, rawUrl: string, ats: Ats | null, depth: number): Promise<void> {
+  const url = normalizeUrl(rawUrl);
   const { rows } = await pool.query<{ id: string }>(
     `INSERT INTO career_pages (company_id, url, kind, ats_kind, status, depth) VALUES ($1, $2, $3, $4, 'found', $5)
      ON CONFLICT (url) DO UPDATE SET status = 'found' RETURNING id`,
@@ -343,11 +349,11 @@ async function readCareerPage(task: Task): Promise<HandlerResult> {
     if (r) llmCalls++;
     for (const p of r?.postings ?? []) {
       if (!p.title || !looksLikeJobTitle(p.title, prefs.keywords)) continue;
-      const url = p.url ? new URL(p.url, task.url).toString() : task.url;
+      const url = p.url ? normalizeUrl(p.url, task.url) : normalizeUrl(task.url);
       if (p.url && sameSite(url, task.url) && url !== task.url) {
         await enqueue("career-job", url, { priority: 65, payload: { companyId: c.id, title: p.title } });
       } else {
-        await saveCareerPosting(c.name, { id: urlId(`${task.url}#${p.title}`), url: task.url, title: p.title, location: p.location ?? "", description: p.requirements ?? p.title });
+        await saveCareerPosting(c.name, { id: urlId(`${normalizeUrl(task.url)}#${p.title}`), url: normalizeUrl(task.url), title: p.title, location: p.location ?? "", description: p.requirements ?? p.title });
       }
     }
   }
@@ -362,7 +368,10 @@ async function readCareerJob(task: Task): Promise<HandlerResult> {
   const html = await fetchText(task.url, { browserLike: true });
   const $ = cheerio.load(html);
   const text = mainText(html);
-  const title = String(task.payload.title || $("h1").first().text().trim() || $("title").text().trim());
+  // The page's own heading is cleaner than the link text, which may glue salary and deadline onto the title.
+  const prefs = await loadPrefs();
+  const h1 = $("h1").first().text().replace(/\s+/g, " ").trim();
+  const title = looksLikeJobTitle(h1, prefs.keywords) ? h1 : String(task.payload.title || h1 || $("title").text().trim());
   if (!looksLikePosting(text)) {
     await pool.query(
       `INSERT INTO rejected_postings (source, external_id, reason) VALUES ('career', $1, 'not a posting')

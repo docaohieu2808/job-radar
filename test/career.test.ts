@@ -70,6 +70,12 @@ describe("career pages", () => {
     expect(looksLikePosting("Our DevOps services help you scale. Contact us.")).toBe(false);
   });
 
+  it("gives one page one address", async () => {
+    const { normalizeUrl } = await import("../src/sources/career.js");
+    expect(normalizeUrl("https://www.arestos.com/career/")).toBe("https://arestos.com/career");
+    expect(normalizeUrl("https://efl.global/index%2Ephp/company/careers#top")).toBe("https://efl.global/index.php/company/careers");
+  });
+
   it("spots an empty JavaScript shell", () => {
     expect(needsBrowser('<div id="root"></div><script src="/app.js"></script>', "")).toBe(true);
     expect(needsBrowser("<main>long text</main>", "x".repeat(500))).toBe(false);
