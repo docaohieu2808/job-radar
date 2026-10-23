@@ -70,6 +70,10 @@ export const linkedin: Source = {
     { kind: "linkedin-search", url: searchUrl("cloud engineer", "Ho Chi Minh City, Vietnam"), priority: 30 },
     { kind: "linkedin-search", url: searchUrl("devsecops", "Ho Chi Minh City, Vietnam"), priority: 40 },
     { kind: "linkedin-search", url: searchUrl("devops", "Vietnam", "&f_WT=2"), priority: 20 },
+    // Remote roles at companies abroad that hire from this region.
+    { kind: "linkedin-search", url: searchUrl("site reliability engineer", "Vietnam", "&f_WT=2"), priority: 30 },
+    { kind: "linkedin-search", url: searchUrl("devops", "Southeast Asia", "&f_WT=2"), priority: 30 },
+    { kind: "linkedin-search", url: searchUrl("devops", "Asia Pacific", "&f_WT=2"), priority: 40 },
   ],
   handlers: {
     "linkedin-search": async (task) => {

@@ -93,6 +93,17 @@ describe("scoring traps from real postings", () => {
     expect(detectForeignLanguage("Experience with GCP n2-standard machines is required").language).toBeNull();
   });
 
+  it("keeps remote work abroad but drops offices abroad named in a title or address", () => {
+    expect(isWantedLocation("", "hybrid", "Senior AWS DevOps Engineer https://netcompany.com/job/REF5842J-Leeds")).toBe(false);
+    expect(isWantedLocation("", "unknown", "Cloud Platform Engineer - Thailand, Bangkok")).toBe(false);
+    expect(isWantedLocation("Singapore", "remote")).toBe(true);
+    expect(isWantedLocation("Ho Chi Minh City", "onsite", "DevOps Engineer (Remote Japan)")).toBe(true);
+  });
+
+  it("does not read company age as required experience", () => {
+    expect(detectLevel("Middle - Senior DevOps Engineer", "23+ years of expertise - Gradion builds digital platforms").years).toBeNull();
+  });
+
   it("drops postings for an office in Japan", () => {
     expect(isWantedLocation("Japan Office", "onsite")).toBe(false);
   });

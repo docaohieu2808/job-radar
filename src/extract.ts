@@ -138,7 +138,8 @@ export function detectLevel(title: string, text: string): { level: Level; years:
   text = text.replace(/(\d+)\s*years?,\s*(\d+)\s*years?/gi, "$1-$2 years");
   const experienceLines = text.split("\n").filter((l) => /experience|kinh nghiệm|\bexp\b|\bKN\b/i.test(l)).join("\n");
   const yearsHit = firstMatch(title, YEARS) ?? firstMatch(experienceLines, YEARS) ?? firstMatch(text, YEARS);
-  const years = yearsHit ? Number(yearsHit.match[1]) : null;
+  // Company age ("23+ years of expertise") is not a requirement; no posting here asks for more than 15 years.
+  const years = yearsHit && Number(yearsHit.match[1]) <= 15 ? Number(yearsHit.match[1]) : null;
   const upper = yearsHit?.match[2] ? Number(yearsHit.match[2]) : years;
   if (level === "unknown" && years !== null && upper !== null) {
     if (years <= 4 && upper >= 2) level = "middle";
@@ -245,9 +246,15 @@ const HCMC = /h[oồ] ch[ií] minh|\bhcm\b|tp\.? ?hcm|sài gòn|saigon|thủ đ�
 // Other Vietnamese cities, and offices abroad that sister sites list next to the HCMC ones ("Japan Office").
 const OTHER_CITY = /hà nội|ha noi|hanoi|đà nẵng|da nang|danang|hải phòng|hai phong|cần thơ|can tho|nha trang|huế|bắc ninh|bac ninh|japan office|văn phòng nhật bản|tokyo|osaka/i;
 
-export function isWantedLocation(location: string, workMode: WorkMode): boolean {
+// Places abroad, as they appear in a location, a title ("- Thailand, Bangkok") or a career-site address ("/REF5842J-Leeds").
+const ABROAD = /\b(japan|tokyo|osaka|singapore|thailand|bangkok|malaysia|kuala lumpur|indonesia|jakarta|philippines|manila|india|bangalore|bengaluru|pune|hyderabad|australia|sydney|melbourne|new zealand|united kingdom|england|london|leeds|manchester|ireland|dublin|germany|berlin|munich|switzerland|zurich|z[uü]rich|bern|geneva|denmark|copenhagen|aarhus|belgium|brussels|netherlands|amsterdam|france|paris|poland|warsaw|krakow|lithuania|vilnius|serbia|belgrade|romania|bucharest|spain|madrid|portugal|lisbon|sweden|stockholm|norway|oslo|finland|helsinki|usa|united states|new york|san francisco|seattle|canada|toronto|vancouver|korea|seoul|china|shanghai|beijing|hong kong|taiwan|taipei|dubai)\b/i;
+
+// HCMC or remote. Remote work for a company abroad is welcome; going to an office abroad or in another
+// Vietnamese city is not. `other` is the title and address, where career sites often put the city.
+export function isWantedLocation(location: string, workMode: WorkMode, other = ""): boolean {
   if (workMode === "remote") return true;
   if (HCMC.test(location)) return true;
+  if (ABROAD.test(location) || ABROAD.test(other.replace(/[-_/%]+/g, " "))) return false;
   return !OTHER_CITY.test(location);
 }
 

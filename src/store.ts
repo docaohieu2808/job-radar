@@ -39,9 +39,9 @@ export function contentHash(text: string): string {
 }
 
 // Why a posting is not kept under the current preferences, or null when it is.
-function rejection(title: string, location: string, workMode: WorkMode, prefs: Prefs): string | null {
+function rejection(title: string, location: string, workMode: WorkMode, prefs: Prefs, url = ""): string | null {
   if (!isRelevantTitle(title, prefs.keywords)) return "title";
-  if (!isWantedLocation(location, workMode)) return "place";
+  if (!isWantedLocation(location, workMode, `${title} ${url}`)) return "place";
   if (workMode !== "unknown" && !prefs.modes[workMode]) return "work mode";
   return null;
 }
@@ -57,7 +57,7 @@ async function reject(source: string, externalId: string, reason: string): Promi
 export async function savePosting(p: Posting): Promise<SaveResult> {
   const prefs = await loadPrefs();
   const facts = extractFacts({ title: p.title, text: p.description, tags: p.tags, salaryText: p.salaryText });
-  const rejected = rejection(p.title, p.location, facts.workMode, prefs);
+  const rejected = rejection(p.title, p.location, facts.workMode, prefs, p.url);
   if (rejected) {
     await reject(p.source, p.externalId, rejected);
     return { status: "skipped" };
@@ -173,14 +173,15 @@ export async function closeStale(days = 7): Promise<number> {
 export async function rescoreAll(): Promise<number> {
   const prefs = await loadPrefs();
   const { rows } = await pool.query<{
-    id: number; title: string; description: string; stack: string[]; salary_min: string | null; salary_max: string | null; currency: string | null; location: string;
-  }>("SELECT id, title, coalesce(description, '') AS description, stack, salary_min, salary_max, currency, coalesce(location, '') AS location FROM jobs");
+    id: number; title: string; description: string; stack: string[]; salary_min: string | null; salary_max: string | null; currency: string | null; location: string; urls: string;
+  }>(`SELECT id, title, coalesce(description, '') AS description, stack, salary_min, salary_max, currency, coalesce(location, '') AS location,
+             coalesce((SELECT string_agg(s.url, ' ') FROM job_sources s WHERE s.job_id = jobs.id), '') AS urls FROM jobs`);
   let dropped = 0;
   for (const r of rows) {
     const facts = extractFacts({ title: r.title, text: r.description, tags: r.stack });
     // Untriaged postings that the current keywords, places or work modes would not keep are removed;
     // anything the owner already acted on stays.
-    const rejected = rejection(r.title, r.location, facts.workMode, prefs);
+    const rejected = rejection(r.title, r.location, facts.workMode, prefs, r.urls);
     if (rejected) {
       const { rows: gone } = await pool.query<{ source: string; external_id: string }>(
         `WITH del AS (DELETE FROM jobs j USING applications a WHERE a.job_id = j.id AND j.id = $1 AND a.status = 'new' RETURNING j.id)
