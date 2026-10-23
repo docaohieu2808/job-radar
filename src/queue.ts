@@ -92,6 +92,38 @@ export async function blockHost(host: string, until: Date): Promise<void> {
   await pool.query("UPDATE hosts SET blocked_until = $2 WHERE host = $1", [host, until]);
 }
 
+export const FIRST_PAUSE_SECONDS = 15 * 60;
+export const MAX_PAUSE_SECONDS = 6 * 3600;
+
+// Pauses a refusing host: the host's Retry-After when given, otherwise 15 minutes doubled for every
+// refusal in a row (15, 30, 60, 120 min ... at most 6 h). Returns when the host may be tried again.
+export async function pauseHost(host: string, retryAfterSeconds: number | null): Promise<Date> {
+  const { rows } = await pool.query<{ blocked_until: Date }>(
+    `UPDATE hosts SET refusals = refusals + 1,
+            blocked_until = now() + make_interval(secs => COALESCE($2, LEAST($3 * power(2, refusals), $4)))
+      WHERE host = $1 RETURNING blocked_until`,
+    [host, retryAfterSeconds, FIRST_PAUSE_SECONDS, MAX_PAUSE_SECONDS],
+  );
+  return rows[0]?.blocked_until ?? new Date(Date.now() + FIRST_PAUSE_SECONDS * 1000);
+}
+
+// A refusal is the host's state, not the task's fault: the task waits for the host without using up an attempt.
+export async function deferTask(task: Task, until: Date, error: string): Promise<void> {
+  await pool.query(
+    `UPDATE crawl_queue SET locked_at = NULL, attempts = GREATEST(attempts - 1, 0), last_error = $2, last_run_at = now(),
+            next_fetch_at = GREATEST(next_fetch_at, $3) WHERE id = $1`,
+    [task.id, error, until],
+  );
+}
+
+// The host answered normally: the next refusal starts from the shortest pause again, and tasks that were
+// only waiting on the refusal no longer count as errors.
+export async function clearRefusals(host: string): Promise<void> {
+  const { rowCount } = await pool.query("UPDATE hosts SET refusals = 0, blocked_until = NULL WHERE host = $1 AND (refusals > 0 OR blocked_until IS NOT NULL)", [host]);
+  if (rowCount)
+    await pool.query("UPDATE crawl_queue SET last_error = NULL WHERE host = $1 AND done_at IS NULL AND last_error LIKE 'host refused%'", [host]);
+}
+
 // Releases tasks claimed by a worker that crashed or was restarted mid-task.
 export async function releaseStaleLocks(): Promise<number> {
   const { rowCount } = await pool.query(

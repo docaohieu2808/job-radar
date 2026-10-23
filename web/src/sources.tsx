@@ -23,10 +23,10 @@ export function SourcesScreen({ app }: { app: App }) {
     setChecking(id);
     try {
       const r = await api.checkSource(id);
-      app.showToast({ text: r.pausedUntil ? `${name} is paused until ${clock(r.pausedUntil)}` : `${name}: ${r.queued} ${r.queued === 1 ? "search" : "searches"} queued` });
+      app.showToast({ text: r.message });
       void app.reload();
     } catch {
-      app.showToast({ text: `${name}: could not queue a check` });
+      app.showToast({ text: `${name}: the check did not finish` });
     } finally {
       setChecking(null);
     }
@@ -84,7 +84,7 @@ export function SourcesScreen({ app }: { app: App }) {
                 <button onClick={() => void check(s.id, s.name)} disabled={checking === s.id} className="hv-ctl press"
                   style={css("height:32px;min-width:104px;padding:0 12px;border-radius:10px;border:1px solid var(--line2);background:var(--sheet);font-size:13px;font-weight:500;display:flex;align-items:center;justify-content:center;gap:8px;cursor:pointer")}>
                   {checking === s.id && <span style={css("width:12px;height:12px;border-radius:9999px;border:2px solid currentColor;border-right-color:transparent;box-sizing:border-box;animation:jr-spin 700ms linear infinite")} />}
-                  {checking === s.id ? "Checking" : "Check now"}
+                  {checking === s.id ? "Checking" : s.status === "Blocked" ? "Try now" : "Check now"}
                 </button>
               </div>
             )}

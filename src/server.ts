@@ -4,7 +4,7 @@ import { readFile, stat } from "node:fs/promises";
 import path from "node:path";
 import { pool } from "./db.js";
 import { loadDescription, loadState } from "./api/state.js";
-import { checkNow } from "./api/sources-health.js";
+import { tryNow } from "./api/sources-health.js";
 import { BadRequest, NotFound, setStatus, setWatch, updatePrefs } from "./api/actions.js";
 
 const PORT = Number(process.env.PORT ?? 8080);
@@ -55,7 +55,7 @@ async function api(req: IncomingMessage, res: ServerResponse, url: URL): Promise
     return send(res, 200, { ok: true });
   }
   if (method === "PUT" && parts[1] === "prefs") return send(res, 200, await updatePrefs(await readBody(req)));
-  if (method === "POST" && parts[1] === "sources" && parts[3] === "check") return send(res, 200, await checkNow(parts[2]));
+  if (method === "POST" && parts[1] === "sources" && parts[3] === "check") return send(res, 200, await tryNow(parts[2]));
   send(res, 404, { error: "not found" });
 }
 

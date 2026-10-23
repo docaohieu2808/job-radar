@@ -1,6 +1,9 @@
 // Whether each source is working, for the Sources screen and the sidebar line. Derived from the crawl queue:
 // a paused host is Blocked, a task that failed and is being retried (or gave up today) is Degraded.
 import { pool } from "../db.js";
+import { clearRefusals, complete, deferTask, fail, pauseHost, type Task } from "../queue.js";
+import { HostRefusedError } from "../handlers/index.js";
+import { sourceHandlers } from "../sources/index.js";
 import type { SourceHealth, Usage } from "./view-types.js";
 
 const SOURCES = [
@@ -22,7 +25,7 @@ function explain(name: string, error: string, pausedUntil: Date | null): { error
     const why = code === "429" ? "too many requests" : "access refused";
     return {
       error: `${name} answered ${code} (${why}).`,
-      detail: pausedUntil ? `Paused until ${time(pausedUntil)}, then checked again automatically.` : "Retrying with a longer wait.",
+      detail: pausedUntil ? `Paused until ${time(pausedUntil)}, then checked again automatically. Try now checks whether it answers again.` : "Retrying with a longer wait.",
     };
   }
   if (/-> (\d+)/.test(error)) return { error: `${name} returned an error page (${/-> (\d+)/.exec(error)![1]}).`, detail: "Retrying with a longer wait." };
@@ -75,14 +78,39 @@ export async function sourceHealth(): Promise<{ sources: SourceHealth[]; usage: 
   };
 }
 
-// "Check now": the source's searches become due immediately. A paused host stays paused.
-export async function checkNow(sourceId: string): Promise<{ queued: number; pausedUntil: string | null }> {
+export type TryResult = { ok: boolean; pausedUntil: string | null; message: string };
+
+// "Try now" / "Check now": runs one of the source's searches immediately, outside the queue order.
+// If the host answers, its pause is lifted and the other searches become due; if it refuses again,
+// the pause doubles as it would for the crawler.
+export async function tryNow(sourceId: string): Promise<TryResult> {
   const s = SOURCES.find((x) => x.id === sourceId);
   if (!s) throw new Error(`unknown source ${sourceId}`);
-  const { rowCount } = await pool.query(
-    "UPDATE crawl_queue SET next_fetch_at = now() WHERE kind = $1 AND done_at IS NULL AND locked_at IS NULL",
-    [`${s.id}-search`],
+  const kind = `${s.id}-search`;
+  const { rows } = await pool.query<Task>(
+    `UPDATE crawl_queue SET locked_at = now(), attempts = attempts + 1
+      WHERE id = (SELECT id FROM crawl_queue WHERE kind = $1 AND done_at IS NULL AND locked_at IS NULL ORDER BY priority LIMIT 1)
+      RETURNING id, kind, url, host, payload, attempts`,
+    [kind],
   );
-  const { rows } = await pool.query<{ blocked_until: Date | null }>("SELECT blocked_until FROM hosts WHERE host = $1 AND blocked_until > now()", [s.host]);
-  return { queued: rowCount ?? 0, pausedUntil: rows[0]?.blocked_until?.toISOString() ?? null };
+  const task = rows[0];
+  if (!task) return { ok: false, pausedUntil: null, message: `${s.name} is being checked right now` };
+  // This request counts toward the host's politeness clock like any crawler request.
+  await pool.query("UPDATE hosts SET next_allowed_at = now() + make_interval(secs => min_interval_s) WHERE host = $1", [task.host]);
+  try {
+    const result = await sourceHandlers[kind](task);
+    await complete(task.id, result.recrawlAfterSeconds);
+    await clearRefusals(task.host);
+    await pool.query("UPDATE crawl_queue SET next_fetch_at = now() WHERE kind = $1 AND done_at IS NULL AND locked_at IS NULL", [kind]);
+    return { ok: true, pausedUntil: null, message: `${s.name} answered. Checking it again now.` };
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    if (err instanceof HostRefusedError) {
+      const until = await pauseHost(task.host, err.retryAfterSeconds);
+      await deferTask(task, until, message);
+      return { ok: false, pausedUntil: until.toISOString(), message: `${s.name} still answers ${err.status}. Paused until ${time(until)}.` };
+    }
+    await fail(task, message);
+    return { ok: false, pausedUntil: null, message: `${s.name} could not be read: ${message}` };
+  }
 }

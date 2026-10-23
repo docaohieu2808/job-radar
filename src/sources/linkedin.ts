@@ -8,8 +8,6 @@ import { htmlToText } from "../extract.js";
 import { HOUR, type Source } from "./types.js";
 
 const HOST = "www.linkedin.com";
-// LinkedIn answers bursts with 429 even at low volume; back off for a few hours rather than a day.
-const PAUSE_WHEN_REFUSED = 3 * HOUR;
 const DAILY_POSTING_BUDGET = 100;
 
 function searchUrl(keywords: string, location: string, extra = ""): string {
@@ -75,7 +73,7 @@ export const linkedin: Source = {
   ],
   handlers: {
     "linkedin-search": async (task) => {
-      const cards = parseSearch(await fetchText(task.url, { browserLike: true, refusedPauseSeconds: PAUSE_WHEN_REFUSED }));
+      const cards = parseSearch(await fetchText(task.url, { browserLike: true }));
       const unknown = new Set(await markSeen("linkedin", cards.map((c) => c.id)));
       let budget = DAILY_POSTING_BUDGET - (await postingsQueuedToday());
       for (const card of cards) {
@@ -90,7 +88,7 @@ export const linkedin: Source = {
     },
     "linkedin-posting": async (task) => {
       const id = String(task.payload.id);
-      const posting = parsePosting(await fetchText(task.url, { browserLike: true, refusedPauseSeconds: PAUSE_WHEN_REFUSED }), id);
+      const posting = parsePosting(await fetchText(task.url, { browserLike: true }), id);
       const postedAt = task.payload.postedAt ? new Date(String(task.payload.postedAt)) : null;
       await savePosting({ ...posting, postedAt });
       return { fetched: 1 };

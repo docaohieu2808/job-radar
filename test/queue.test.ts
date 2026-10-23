@@ -6,7 +6,7 @@ process.env.DATABASE_URL = testUrl ?? "postgres://unused";
 
 const { pool } = await import("../src/db.js");
 const { migrate } = await import("../src/migrate.js");
-const { backoffSeconds, claim, complete, enqueue, fail, blockHost } = await import("../src/queue.js");
+const { backoffSeconds, claim, complete, enqueue, fail, blockHost, pauseHost, clearRefusals, deferTask } = await import("../src/queue.js");
 
 describe("backoffSeconds", () => {
   it("doubles from one minute and caps at six hours", () => {
@@ -52,6 +52,30 @@ describe.skipIf(!testUrl)("crawl queue", () => {
     await enqueue("noop", "https://a.example/1");
     await blockHost("a.example", new Date(Date.now() + 3600_000));
     expect(await claim()).toBeNull();
+  });
+
+  it("pauses a refusing host 15 min, doubling per refusal, and starts over after a success", async () => {
+    await enqueue("noop", "https://a.example/1");
+    const minutes = async () => {
+      const until = await pauseHost("a.example", null);
+      return Math.round((until.getTime() - Date.now()) / 60_000);
+    };
+    expect(await minutes()).toBe(15);
+    expect(await minutes()).toBe(30);
+    expect(await minutes()).toBe(60);
+    await clearRefusals("a.example");
+    expect(await minutes()).toBe(15);
+    const until = await pauseHost("a.example", 120);
+    expect(Math.round((until.getTime() - Date.now()) / 1000)).toBe(120);
+  });
+
+  it("keeps a refused task's attempts and makes it wait for the host", async () => {
+    await enqueue("noop", "https://a.example/1");
+    const task = await claim();
+    const until = await pauseHost("a.example", null);
+    await deferTask(task!, until, "host refused with 429");
+    const { rows } = await pool.query("SELECT attempts, locked_at, next_fetch_at >= $1 AS waits FROM crawl_queue", [until]);
+    expect(rows[0]).toEqual({ attempts: 0, locked_at: null, waits: true });
   });
 
   it("retries with backoff, then gives up", async () => {

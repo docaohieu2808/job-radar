@@ -21,5 +21,5 @@ export const api = {
   setStatus: (id: number, status: string, note?: string | null) => call("POST", `/api/jobs/${id}/status`, { status, note }),
   watch: (name: string, watch: boolean) => call("POST", "/api/companies/watch", { name, watch }),
   savePrefs: (prefs: Prefs) => call<Prefs>("PUT", "/api/prefs", prefs),
-  checkSource: (id: string) => call<{ queued: number; pausedUntil: string | null }>("POST", `/api/sources/${id}/check`),
+  checkSource: (id: string) => call<{ ok: boolean; pausedUntil: string | null; message: string }>("POST", `/api/sources/${id}/check`),
 };

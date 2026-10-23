@@ -17,9 +17,10 @@ export const handlers: Record<string, Handler> = {
   noop,
 };
 
-// Thrown by a handler when the host refused us (429/403); the worker blocks the host instead of retrying it hot.
+// Thrown by a handler when the host refused us (429/403); the worker pauses the host instead of retrying it hot.
+// retryAfterSeconds is the host's own Retry-After when it sent one.
 export class HostRefusedError extends Error {
-  constructor(public readonly status: number, public readonly retryAfterSeconds: number) {
+  constructor(public readonly status: number, public readonly retryAfterSeconds: number | null) {
     super(`host refused with ${status}`);
   }
 }

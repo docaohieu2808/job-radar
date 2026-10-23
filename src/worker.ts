@@ -1,6 +1,6 @@
 // Worker loop: claim a task, run its handler, record the outcome. Counters are flushed to crawl_runs every minute.
 import { pool } from "./db.js";
-import { blockHost, claim, complete, fail, releaseStaleLocks, type Task } from "./queue.js";
+import { claim, clearRefusals, complete, deferTask, fail, pauseHost, releaseStaleLocks, type Task } from "./queue.js";
 import { handlers as baseHandlers, HostRefusedError } from "./handlers/index.js";
 import { sourceHandlers } from "./sources/index.js";
 
@@ -53,13 +53,16 @@ export class Worker {
       this.counters.fetched += result.fetched ?? 0;
       this.counters.llmCalls += result.llmCalls ?? 0;
       await complete(task.id, result.recrawlAfterSeconds);
+      await clearRefusals(task.host);
     } catch (err) {
       this.counters.errors++;
       const message = err instanceof Error ? err.message : String(err);
       if (err instanceof HostRefusedError) {
         // The pause is visible on the Sources screen (hosts.blocked_until).
-        await blockHost(task.host, new Date(Date.now() + err.retryAfterSeconds * 1000));
-        console.warn(`${task.host} answered ${err.status}; paused for ${err.retryAfterSeconds}s`);
+        const until = await pauseHost(task.host, err.retryAfterSeconds);
+        console.warn(`${task.host} answered ${err.status}; paused until ${until.toISOString()}`);
+        await deferTask(task, until, message);
+        return;
       }
       const outcome = await fail(task, message);
       // A task that gave up keeps last_error; the Sources screen lists those.
