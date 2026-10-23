@@ -10,6 +10,8 @@ import { salaryInMillionVnd } from "./score.js";
 export const MIN_LABELS = 10;
 const MIN_FEATURE_COUNT = 3;
 const MAX_ADJUST = 15;
+// Few decisions are weak evidence: the adjustment grows with them and reaches full strength at 40.
+const FULL_TRUST_LABELS = 40;
 // A feature liked every time against an overall rate of 50% moves the score by about 10 points.
 const POINTS_PER_RATE = 20;
 const LIKED = new Set(["interested", "applied", "interviewing", "offer"]);
@@ -72,12 +74,13 @@ export function learnedReasons(m: Learned | null, features: Feature[]): Reason[]
   const down = hits.filter((h) => h.d < 0).sort((a, b) => a.d - b.d);
   const upSum = up.reduce((s, h) => s + h.d, 0);
   const downSum = down.reduce((s, h) => s + h.d, 0);
-  const net = upSum + downSum;
-  const scale = Math.abs(net) > MAX_ADJUST ? MAX_ADJUST / Math.abs(net) : 1;
+  const trust = Math.min(1, m.labels / FULL_TRUST_LABELS);
+  const net = (upSum + downSum) * trust;
+  const scale = trust * (Math.abs(net) > MAX_ADJUST ? MAX_ADJUST / Math.abs(net) : 1);
   const names = (xs: { label: string }[]) => xs.slice(0, 3).map((x) => x.label).join(", ");
   const reasons: Reason[] = [];
-  const upPts = Math.round(upSum * scale);
-  const downPts = Math.round(downSum * scale);
+  const upPts = Math.min(MAX_ADJUST, Math.round(upSum * scale));
+  const downPts = Math.max(-MAX_ADJUST, Math.round(downSum * scale));
   if (upPts) reasons.push({ cat: "learned", points: upPts, label: `Like ones you kept (${names(up)})` });
   if (downPts) reasons.push({ cat: "learned", points: downPts, label: `Like ones you skipped (${names(down)})` });
   return reasons;
