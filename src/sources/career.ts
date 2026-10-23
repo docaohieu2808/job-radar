@@ -20,7 +20,8 @@ const MAX_INTERVAL = 7 * DAY;
 const REDISCOVER_AFTER = 30 * DAY;
 const MAX_LISTING_CHILDREN = 3;
 const CAREER_WORDS = /tuyển dụng|tuyen-dung|tuyendung|careers?\b|\bjobs?\b|join us|join-us|recruit|cơ hội nghề nghiệp|co-hoi-nghe-nghiep|việc làm|viec-lam|work with us/i;
-const LISTING_WORDS = /jobs?|careers?|opening|position|vacanc|tuyen-dung|tuyển dụng|vi-tri|vị trí|co-hoi|cơ hội|recruit|engineering|technology|công nghệ|it-|software/i;
+// A listing page, not one posting: "/jobs", "/careers/openings", "Vị trí đang tuyển", "Cơ hội nghề nghiệp".
+const LISTING_WORDS = /\/(jobs|careers?|openings?|positions?|vacancies|tuyen-dung|co-hoi-nghe-nghiep|recruitment)\/?$|vị trí đang tuyển|việc làm đang tuyển|open (positions|roles)|all jobs|xem tất cả|cơ hội nghề nghiệp/i;
 const PROBE_PATHS = ["/careers", "/career", "/tuyen-dung", "/vi/tuyen-dung", "/jobs", "/recruitment"];
 const TWO_PART_TLDS = /\.(com|net|org|edu|gov|ac|co)\.(vn|uk|jp|sg|au)$/i;
 
@@ -52,6 +53,10 @@ export function needsBrowser(html: string, text: string): boolean {
 }
 
 export type Link = { url: string; text: string };
+
+export function isListing(l: Link): boolean {
+  return LISTING_WORDS.test(new URL(l.url).pathname) || LISTING_WORDS.test(l.text);
+}
 
 export function links(html: string, base: string): Link[] {
   const $ = cheerio.load(html);
@@ -253,7 +258,7 @@ export const career: Source = {
       // Listing pages one level down (e.g. "Open positions", "Engineering") become career pages of their own.
       if (!page.depth) {
         const listings = all
-          .filter((l) => sameSite(l.url, task.url) && l.url !== task.url && !jobLinks.includes(l) && LISTING_WORDS.test(`${l.text} ${new URL(l.url).pathname}`))
+          .filter((l) => sameSite(l.url, task.url) && l.url !== task.url && !jobLinks.includes(l) && isListing(l))
           .slice(0, MAX_LISTING_CHILDREN);
         for (const l of listings) await addCareerPage(c.id, l.url, null, 1);
       }

@@ -36,6 +36,8 @@ export async function askJson<T>(system: string, user: string): Promise<T | null
     body: JSON.stringify({
       model: config.llmModel,
       temperature: 0,
+      // 9Router streams unless told not to.
+      stream: false,
       response_format: { type: "json_object" },
       messages: [{ role: "system", content: system }, { role: "user", content: user.slice(0, 24_000) }],
     }),

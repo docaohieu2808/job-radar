@@ -44,6 +44,15 @@ describe("career pages", () => {
     expect(mainText(html)).toContain("DevOps Engineer");
     expect(mainText(html)).not.toContain("©");
   });
+  it("treats only listing pages as listings", async () => {
+    const { isListing } = await import("../src/sources/career.js");
+    expect(isListing({ url: "https://sacombankcareer.com/go/careers/", text: "Careers" })).toBe(true);
+    expect(isListing({ url: "https://x.vn/tuyen-dung", text: "Tuyển dụng" })).toBe(true);
+    expect(isListing({ url: "https://globaltechjsc.com/tu-van-he-thong", text: "Tư vấn hệ thống" })).toBe(false);
+    expect(isListing({ url: "https://globaltechjsc.com/tuyen-dung-vi-tri-network-engineer", text: "Network Engineer" })).toBe(false);
+    expect(isListing({ url: "https://x.vn/about", text: "Vị trí đang tuyển" })).toBe(true);
+  });
+
   it("spots an empty JavaScript shell", () => {
     expect(needsBrowser('<div id="root"></div><script src="/app.js"></script>', "")).toBe(true);
     expect(needsBrowser("<main>long text</main>", "x".repeat(500))).toBe(false);
