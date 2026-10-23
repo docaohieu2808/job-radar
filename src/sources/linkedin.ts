@@ -1,4 +1,4 @@
-// LinkedIn guest pages (no sign-in). Kept to a small daily budget: about 14 search pages and at most 100 postings.
+// LinkedIn guest pages (no sign-in). One request every 5 minutes: at 90 s the guest API started answering 429 after about 8 requests.
 import * as cheerio from "cheerio";
 import { fetchText } from "../http.js";
 import { enqueue } from "../queue.js";
@@ -63,7 +63,7 @@ async function postingsQueuedToday(): Promise<number> {
 
 export const linkedin: Source = {
   name: "linkedin",
-  hostIntervalSeconds: { [HOST]: 90 },
+  hostIntervalSeconds: { [HOST]: 300 },
   seeds: [
     { kind: "linkedin-search", url: searchUrl("devops", "Ho Chi Minh City, Vietnam"), priority: 10 },
     { kind: "linkedin-search", url: searchUrl("devops", "Ho Chi Minh City, Vietnam").replace("start=0", "start=10"), priority: 20 },
