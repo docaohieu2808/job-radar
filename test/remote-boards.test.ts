@@ -31,6 +31,12 @@ describe("remote boards", () => {
     expect(isWantedLocation(b.location, "remote")).toBe(false);
   });
 
+  it("keeps a remote-board posting remote when rescored from its stored fields", () => {
+    const facts = extractFacts({ title: "Senior SRE - APAC", text: "We run Kubernetes in Singapore and Sydney.", tags: ["Kubernetes"], location: "Remote (Singapore, Vietnam)" });
+    expect(facts.workMode).toBe("remote");
+    expect(isWantedLocation("Remote (Singapore, Vietnam)", facts.workMode)).toBe(true);
+  });
+
   it("maps a Himalayas job open to Vietnam and finds the site among its links", () => {
     const p = himalayasPosting({
       title: "Senior SRE - APAC", companyName: "Alpaca", guid: "https://himalayas.app/companies/alpaca/jobs/senior-sre-apac",

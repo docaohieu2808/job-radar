@@ -60,7 +60,7 @@ async function reject(source: string, externalId: string, reason: string): Promi
 
 export async function savePosting(p: Posting): Promise<SaveResult> {
   const prefs = await loadPrefs();
-  const facts = extractFacts({ title: p.title, text: p.description, tags: p.tags, salaryText: p.salaryText });
+  const facts = extractFacts({ title: p.title, text: p.description, tags: p.tags, salaryText: p.salaryText, location: p.location });
   const rejected = rejection(p.title, p.location, facts.workMode, prefs, p.url);
   if (rejected) {
     await reject(p.source, p.externalId, rejected);
@@ -197,7 +197,7 @@ export async function rescoreAll(): Promise<number> {
   const model = await loadLearned();
   let dropped = 0;
   for (const r of rows) {
-    const facts = extractFacts({ title: r.title, text: r.description, tags: r.stack });
+    const facts = extractFacts({ title: r.title, text: r.description, tags: r.stack, location: r.location });
     // Untriaged postings that the current keywords, places or work modes would not keep are removed;
     // anything the owner already acted on stays.
     const rejected = rejection(r.title, r.location, facts.workMode, prefs, r.urls);
