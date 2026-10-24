@@ -59,7 +59,7 @@ export function siteMatchLabel(score: number | null): "high" | "medium" | "low" 
 }
 
 // --- Postings: stale, reposted, second-hand, or missing from the company's own careers page.
-const RECRUITER = /headhunt|executive search|recruit(ment|ing)? (agency|solutions|services|partners?)|talent (solutions|partners?)|staffing|manpower|human resources? (solutions|services)|\bhr (solutions|services|consult\w*)|nhân lực|cung ứng nhân sự|giải pháp nhân sự|confidential|undisclosed|bảo mật thông tin/i;
+const RECRUITER = /careers\.co\b|\bjobs\s*$|headhunt|executive search|recruit(ment|ing)? (agency|solutions|services|partners?)|talent (solutions|partners?)|staffing|manpower|human resources? (solutions|services)|\bhr (solutions|services|consult\w*)|nhân lực|cung ứng nhân sự|giải pháp nhân sự|confidential|undisclosed|bảo mật thông tin/i;
 // "Our client is hiring", not a menu item such as "Khách hàng của chúng tôi" (our customers page).
 const FOR_A_CLIENT = /\b(our|on behalf of (our|a)) client(,| is| a| -)|khách hàng của chúng tôi (là|đang|cần|tuyển)|cho khách hàng (là|của)/i;
 

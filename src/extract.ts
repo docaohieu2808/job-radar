@@ -115,11 +115,15 @@ const MILLION = 1_000_000;
 
 // Parses "15 - 25 triệu", "Up to 30M", "$1,500 - 2,000", "1000-2000 USD", "Thu nhập 15-40 Triệu".
 // "400–550 triệu/năm", "$60,000 per year": yearly figures are turned into monthly ones, which the score expects.
-const PER_YEAR = /\/\s*(năm|year|yr|annum)\b|(mỗi|một|hằng|hàng) năm|per (year|annum)|annual(ly)?|yearly|\bp\.a\.(?!\w)/i;
+// The yearly marker must sit right after the amount ("550 triệu đồng/năm", "$60,000 per year") or name the salary
+// as yearly ("lương năm", "annual salary"); "review lương hàng năm" after a monthly range is not one. A monthly
+// marker anywhere wins.
+const PER_YEAR = /(triệu|tr\b|million|\bm\b|usd|\$|\d)\s*(đồng|vnđ|vnd)?\s*(\/\s*(năm|year|yr|annum)\b|(mỗi|một) năm|per (year|annum)|a year\b|annually|yearly|\bp\.a\.(?!\w))|(lương|thu nhập|tổng thu nhập) (theo )?năm|annual (salary|compensation|base)|yearly salary/i;
+const PER_MONTH = /\/\s*(tháng|month|mo)\b|(mỗi|một|hàng) tháng|per month|monthly|a month\b/i;
 
 export function parseSalary(input: string): Salary | null {
   const salary = parseSalaryAmount(input);
-  if (!salary || !PER_YEAR.test(input)) return salary;
+  if (!salary || !PER_YEAR.test(input) || PER_MONTH.test(input)) return salary;
   const monthly = (v: number | null) => (v === null ? null : Math.round(v / 12));
   return { ...salary, min: monthly(salary.min), max: monthly(salary.max) };
 }
@@ -256,6 +260,8 @@ export function isVietnameseText(text: string): boolean {
 // Keeps postings whose title contains one of the owner's keywords. Data and developer roles are noise on a broad
 // search even when their title mentions a platform or the cloud, unless they are explicitly DevOps or SRE.
 export function isRelevantTitle(title: string, keywords: string[]): boolean {
+  // "Vận hành" also names plant, machine and sales operations; those are other trades.
+  if (/lò hơi|máy nén|nhà máy|điện gió|điện mặt trời|vận hành máy|cơ điện|bảo trì máy|kinh doanh|bán hàng|\bsales\b|presales?|kế toán|marketing|chăm sóc khách hàng|xây dựng|sản xuất/i.test(title) && !/devops|sre|site reliability|cloud|kubernetes/i.test(title)) return false;
   // Infra, system and network roles stay even when titled "developer" ("Lập trình viên Infra-system-Network").
   if (/\bdata (engineer|scientist|analyst)|\bdeveloper\b|lập trình viên/i.test(title) && !/devops|sre|site reliability|infra|system|network|hạ tầng|hệ thống|\bmạng\b/i.test(title)) return false;
   // Bridge engineers, interpreters and testers are other jobs that share words like "system engineer".
@@ -272,10 +278,10 @@ export function isRelevantTitle(title: string, keywords: string[]): boolean {
 // HCMC or remote; postings only in other cities are dropped. A place naming no known city is kept.
 const HCMC = /h[oồ] ch[ií] minh|\bhcm\b|tp\.? ?hcm|sài gòn|saigon|thủ đức|thu duc/i;
 // Other Vietnamese cities, and offices abroad that sister sites list next to the HCMC ones ("Japan Office").
-const OTHER_CITY = /hà nội|ha noi|hanoi|đà nẵng|da nang|danang|hải phòng|hai phong|cần thơ|can tho|nha trang|huế|bắc ninh|bac ninh|japan office|văn phòng nhật bản|tokyo|osaka/i;
+const OTHER_CITY = /hà nội|ha noi|hanoi|đà nẵng|da nang|danang|hải phòng|hai phong|cần thơ|can tho|nha trang|huế|bắc ninh|bac ninh|bình dương|binh duong|đồng nai|dong nai|biên hòa|bien hoa|long an|vũng tàu|vung tau|bà rịa|ba ria|hồ tràm|ho tram|bắc giang|hưng yên|vĩnh phúc|thái nguyên|quảng ninh|hạ long|đà lạt|quy nhơn|vinh\b|japan office|văn phòng nhật bản|tokyo|osaka/i;
 
 // Places abroad, as they appear in a location, a title ("- Thailand, Bangkok") or a career-site address ("/REF5842J-Leeds").
-const ABROAD = /\b(japan|tokyo|osaka|singapore|thailand|bangkok|malaysia|kuala lumpur|indonesia|jakarta|philippines|manila|india|bangalore|bengaluru|pune|hyderabad|australia|sydney|melbourne|new zealand|united kingdom|england|london|leeds|manchester|ireland|dublin|germany|berlin|munich|switzerland|zurich|z[uü]rich|bern|geneva|denmark|copenhagen|aarhus|belgium|brussels|netherlands|amsterdam|france|paris|poland|warsaw|krakow|lithuania|vilnius|serbia|belgrade|romania|bucharest|spain|madrid|portugal|lisbon|sweden|stockholm|norway|oslo|finland|helsinki|usa|united states|new york|san francisco|seattle|canada|toronto|vancouver|korea|seoul|china|shanghai|beijing|hong kong|taiwan|taipei|dubai)\b/i;
+const ABROAD = /\b(japan|tokyo|osaka|singapore|thailand|bangkok|malaysia|kuala lumpur|indonesia|jakarta|philippines|manila|india|bangalore|bengaluru|pune|hyderabad|australia|sydney|melbourne|new zealand|united kingdom|england|london|leeds|manchester|ireland|dublin|germany|berlin|munich|switzerland|zurich|z[uü]rich|bern|geneva|denmark|copenhagen|aarhus|belgium|brussels|netherlands|amsterdam|france|paris|poland|warsaw|krakow|lithuania|vilnius|serbia|belgrade|romania|bucharest|spain|madrid|portugal|lisbon|sweden|stockholm|norway|oslo|finland|helsinki|usa|united states|new york|san francisco|seattle|canada|toronto|vancouver|korea|seoul|china|shanghai|beijing|hong kong|taiwan|taipei|dubai|nepal|kathmandu|mumbai|delhi|noida|gurgaon|gurugram|chennai|kolkata|ahmedabad|sri lanka|colombo|bangladesh|dhaka|pakistan|karachi|lahore|islamabad|cambodia|phnom penh|myanmar|yangon|laos|vientiane|egypt|cairo|nigeria|lagos|kenya|nairobi|south africa|cape town|brazil|são paulo|sao paulo|argentina|buenos aires|colombia|bogot[aá]|mexico|chile|santiago|peru|lima|turkey|istanbul|israel|tel aviv|ukraine|kyiv|greece|athens|italy|milan|rome|austria|vienna|czech|prague|hungary|budapest|bulgaria|sofia|croatia|zagreb|estonia|tallinn|latvia|riga)\b|metropolitan (region|area)(?![^,]*h[oồ] ch[ií] minh)/i;
 
 // HCMC or remote. Remote work for a company abroad is welcome; going to an office abroad or in another
 // Vietnamese city is not. `other` is the title and address, where career sites often put the city.

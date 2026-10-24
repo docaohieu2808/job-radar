@@ -163,3 +163,26 @@ describe("yearly salaries", () => {
     expect(parseSalary("Lương tháng 13, 15 - 25 triệu")?.max).toBe(25_000_000);
   });
 });
+
+describe("audit 24/10", () => {
+  it("keeps a monthly range monthly even when the text mentions yearly reviews", async () => {
+    const { parseSalary } = await import("../src/extract.js");
+    expect(parseSalary("- Mức lương: 10 – 12 triệu/tháng (tùy kinh nghiệm) và sẽ được review lương hàng năm.")?.max).toBe(12_000_000);
+    expect(parseSalary("Thu nhập: từ 400 đến 550 triệu đồng/năm")?.max).toBe(45_833_333);
+  });
+  it("drops plant, machine and sales operations titles", async () => {
+    const { isRelevantTitle } = await import("../src/extract.js");
+    const kw = ["Vận hành", "System Engineer", "Network", "DevOps"];
+    expect(isRelevantTitle("Nhân viên vận hành lò hơi, máy nén khí lạnh", kw)).toBe(false);
+    expect(isRelevantTitle("Presales Networks Engineer", kw)).toBe(false);
+    expect(isRelevantTitle("Kỹ sư vận hành hệ thống", kw)).toBe(true);
+  });
+  it("drops offices in Nepal, Mumbai, Sri Lanka and Vung Tau", async () => {
+    const { isWantedLocation } = await import("../src/extract.js");
+    expect(isWantedLocation("Kathmandu, Bāgmatī, Nepal", "unknown")).toBe(false);
+    expect(isWantedLocation("Mumbai Metropolitan Region", "unknown")).toBe(false);
+    expect(isWantedLocation("Colombo, Sri Lanka", "unknown")).toBe(false);
+    expect(isWantedLocation("Hồ Tràm, Bà Rịa Vũng Tàu", "unknown")).toBe(false);
+    expect(isWantedLocation("Ho Chi Minh City Metropolitan Area", "unknown")).toBe(true);
+  });
+});

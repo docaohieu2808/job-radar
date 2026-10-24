@@ -84,7 +84,8 @@ export const linkedin: Source = {
         if (!unknown.has(card.id) || budget <= 0) continue;
         await enqueue("linkedin-posting", `https://${HOST}/jobs-guest/jobs/api/jobPosting/${card.id}`, {
           priority: 50,
-          payload: { id: card.id, postedAt: card.postedAt },
+          // Postings found by a remote-only search (f_WT=2) are remote even when the page does not say so.
+          payload: { id: card.id, postedAt: card.postedAt, remote: task.url.includes("f_WT=2") },
         });
         budget--;
       }
@@ -94,7 +95,8 @@ export const linkedin: Source = {
       const id = String(task.payload.id);
       const posting = parsePosting(await fetchText(task.url, { browserLike: true }), id);
       const postedAt = task.payload.postedAt ? new Date(String(task.payload.postedAt)) : null;
-      await savePosting({ ...posting, postedAt });
+      const location = task.payload.remote && !/remote/i.test(posting.location) ? `Remote (${posting.location || "unstated"})` : posting.location;
+      await savePosting({ ...posting, location, postedAt });
       return { fetched: 1 };
     },
   },

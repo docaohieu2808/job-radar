@@ -23,6 +23,8 @@ describe("trust", () => {
     expect(trustReasons(base)).toEqual([]);
     expect(trustReasons({ ...base, firstSeenAt: daysAgo(60), reposted: true })[0].label).toBe("Open 60 days, reposted");
     expect(trustReasons({ ...base, companyName: "ABC Recruitment Solutions" })[0].label).toContain("Recruiter");
+    expect(trustReasons({ ...base, companyName: "thehivecareers.co" })[0].label).toContain("Recruiter");
+    expect(trustReasons({ ...base, companyName: "Stackmeister Jobs" })[0].label).toContain("Recruiter");
     expect(trustReasons({ ...base, description: "Our client, a leading bank, is hiring a DevOps engineer." })[0].label).toContain("Recruiter");
     expect(trustReasons({ ...base, description: "- Trang chủ\n- Khách hàng của chúng tôi\n- Tuyển dụng" })).toEqual([]);
     expect(trustReasons({ ...base, description: "Khách hàng của chúng tôi là một ngân hàng lớn" })[0].label).toContain("Recruiter");
