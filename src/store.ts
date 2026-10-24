@@ -3,7 +3,7 @@
 // Content Seen? = hash of the normalized description; an unchanged posting is only touched, not re-extracted.
 import { createHash } from "node:crypto";
 import { pool, withTransaction } from "./db.js";
-import { bareRemote, extractFacts, isRelevantTitle, isWantedLocation, openWidely, type WorkMode } from "./extract.js";
+import { bareRemote, extractFacts, isRelevantTitle, isWantedLocation, openWidely, remoteElsewhereOnly, type WorkMode } from "./extract.js";
 import type { Prefs } from "./prefs.js";
 import { scorePosting } from "./score.js";
 import { factsFeatures, learnedReasons, loadLearned } from "./learn.js";
@@ -46,9 +46,14 @@ export function contentHash(text: string): string {
 // Why a posting is not kept under the current preferences, or null when it is.
 function rejection(title: string, location: string, workMode: WorkMode, prefs: Prefs, url = "", source = "", description = ""): string | null {
   if (!isRelevantTitle(title, prefs.keywords)) return "title";
-  if (!isWantedLocation(location, workMode, `${title} ${url}`)) return "place";
-  // Company boards abroad: plain "Remote" counts only when the text opens the role widely.
-  if (source === "career" && bareRemote(location) && !openWidely(description)) return "place";
+  // Plain "Remote" names no region: it counts only when the text opens the role widely (otherwise it usually
+  // means remote within the company's own country).
+  if (bareRemote(location)) {
+    if (!openWidely(description)) return "place";
+  } else if (!isWantedLocation(location, workMode, `${title} ${url}`)) return "place";
+  // Remote roles whose text limits them to residents or citizens elsewhere ("must be located in the US").
+  if (workMode === "remote" && remoteElsewhereOnly(description)) return "place";
+  void source;
   if (workMode !== "unknown" && !prefs.modes[workMode]) return "work mode";
   return null;
 }
@@ -61,9 +66,25 @@ async function reject(source: string, externalId: string, reason: string): Promi
   );
 }
 
+// One bad item in a feed or search page must not abort the rest of the page (and fail the search five times).
+export async function saveOne(save: () => Promise<SaveResult>, label: string): Promise<SaveResult | null> {
+  try {
+    return await save();
+  } catch (err) {
+    console.error(`saving ${label} failed`, err instanceof Error ? err.message : err);
+    return null;
+  }
+}
+
 export async function savePosting(p: Posting): Promise<SaveResult> {
   // Some pages carry NUL characters, which Postgres text columns reject.
-  p = { ...p, title: p.title.replace(/\u0000/g, ""), description: p.description.replace(/\u0000/g, "") };
+  const clean = (v: string | undefined | null) => (v ?? "").replace(/\u0000/g, "").trim();
+  p = { ...p, title: clean(p.title), description: clean(p.description), companyName: clean(p.companyName), location: clean(p.location) };
+  // Without an employer name a posting cannot be told apart from others, nor tied to a company.
+  if (!p.companyName || !p.title) {
+    await reject(p.source, p.externalId, "no employer or title");
+    return { status: "skipped" };
+  }
   const prefs = await loadPrefs();
   const facts = extractFacts({ title: p.title, text: p.description, tags: p.tags, salaryText: p.salaryText, location: p.location });
   const rejected = rejection(p.title, p.location, facts.workMode, prefs, p.url, p.source, p.description);
@@ -91,6 +112,8 @@ export async function savePosting(p: Posting): Promise<SaveResult> {
   ];
 
   const result = await withTransaction(async (client) => {
+    // Saves of the same company and title from parallel lanes take turns, so they merge instead of duplicating.
+    await client.query("SELECT pg_advisory_xact_lock(hashtext($1))", [key]);
     const bySource = await client.query<{ job_id: number; content_hash: string; closed_at: Date | null }>(
       `SELECT s.job_id, j.content_hash, j.closed_at FROM job_sources s JOIN jobs j ON j.id = s.job_id
         WHERE s.source = $1 AND s.external_id = $2 FOR UPDATE OF s`,
@@ -126,7 +149,13 @@ export async function savePosting(p: Posting): Promise<SaveResult> {
       ]);
     } else {
       const known = bySource.rows[0];
-      status = known.content_hash === hash ? "unchanged" : "updated";
+      // With several sources, the stored text and facts come from the first one only; another board's
+      // wording must not flip them back and forth on every run.
+      const primary = await client.query<{ source: string; external_id: string }>(
+        "SELECT source, external_id FROM job_sources WHERE job_id = $1 ORDER BY id LIMIT 1", [jobId],
+      );
+      const isPrimary = primary.rows[0]?.source === p.source && primary.rows[0]?.external_id === p.externalId;
+      status = known.content_hash === hash || !isPrimary ? "unchanged" : "updated";
       if (status === "updated") {
         await client.query(
           `UPDATE jobs SET company_name=$1, title=$2, salary_min=$3, salary_max=$4, currency=$5, location=$6, work_mode=$7,
@@ -146,10 +175,14 @@ export async function savePosting(p: Posting): Promise<SaveResult> {
       ]);
     }
 
+    // "Closed" from one board closes the job only when no other source still lists it.
     await client.query(
       `UPDATE jobs SET last_seen_at = now(), company_id = COALESCE(company_id, $3),
-              closed_at = CASE WHEN $2 THEN COALESCE(closed_at, now()) ELSE closed_at END WHERE id = $1`,
-      [jobId, Boolean(p.closed), companyId],
+              closed_at = CASE WHEN $2 AND NOT EXISTS (
+                  SELECT 1 FROM job_sources s WHERE s.job_id = $1 AND NOT (s.source = $4 AND s.external_id = $5)
+                     AND s.last_seen_at > now() - interval '3 days')
+                THEN COALESCE(closed_at, now()) ELSE closed_at END WHERE id = $1`,
+      [jobId, Boolean(p.closed), companyId, p.source, p.externalId],
     );
     return { status, jobId, score };
   });
@@ -168,7 +201,8 @@ export async function markSeen(source: string, externalIds: string[]): Promise<s
     `WITH seen AS (
        UPDATE job_sources SET last_seen_at = now(), missing_runs = 0
         WHERE source = $1 AND external_id = ANY($2) RETURNING job_id, external_id)
-     , touched AS (UPDATE jobs SET last_seen_at = now() WHERE id IN (SELECT job_id FROM seen) RETURNING id)
+     -- Listed again means open again (a search lists open postings only).
+     , touched AS (UPDATE jobs SET last_seen_at = now(), closed_at = NULL WHERE id IN (SELECT job_id FROM seen) RETURNING id)
      SELECT external_id FROM seen
      UNION SELECT external_id FROM rejected_postings
       WHERE source = $1 AND external_id = ANY($2) AND rejected_at > now() - interval '30 days'`,
@@ -179,13 +213,30 @@ export async function markSeen(source: string, externalIds: string[]): Promise<s
   return externalIds.filter((id) => !known.has(id));
 }
 
-// Postings no source has listed for a week are treated as closed.
-export async function closeStale(days = 7): Promise<number> {
+// Closed when no source has listed a posting for a while. Company career pages and ATS boards are read daily
+// and list every open role, so a week without it means it is gone. Job-board searches only show recent
+// postings, so a posting found there is given a month before it counts as closed.
+export async function closeStale(careerDays = 7, boardDays = 30): Promise<number> {
   const { rowCount } = await pool.query(
-    "UPDATE jobs SET closed_at = now() WHERE closed_at IS NULL AND last_seen_at < now() - make_interval(days => $1)",
-    [days],
+    `UPDATE jobs j SET closed_at = now()
+      WHERE j.closed_at IS NULL
+        AND j.last_seen_at < now() - make_interval(days => CASE
+              WHEN EXISTS (SELECT 1 FROM job_sources s WHERE s.job_id = j.id AND s.source <> 'career') THEN $2::int ELSE $1::int END)`,
+    [careerDays, boardDays],
   );
   return rowCount ?? 0;
+}
+
+// A career page that did not change still lists the postings found on it: they stay open.
+export async function touchCareerPostings(companyId: number, host: string): Promise<void> {
+  await pool.query(
+    `WITH s AS (
+       UPDATE job_sources s SET last_seen_at = now() FROM jobs j
+        WHERE s.job_id = j.id AND j.company_id = $1 AND s.source = 'career' AND s.url LIKE '%' || $2 || '%'
+        RETURNING s.job_id)
+     UPDATE jobs SET last_seen_at = now(), closed_at = NULL WHERE id IN (SELECT job_id FROM s)`,
+    [companyId, host.replace(/^www\./, "")],
+  );
 }
 
 // Re-runs extraction and scoring on stored postings, after the rules change. Tags are not stored, so the
@@ -208,17 +259,17 @@ export async function rescoreAll(): Promise<number> {
   let dropped = 0;
   for (const r of rows) {
     const facts = extractFacts({ title: r.title, text: r.description, tags: r.stack, location: r.location });
-    // Untriaged postings that the current keywords, places or work modes would not keep are removed;
-    // anything the owner already acted on stays.
+    // Untriaged postings that the current keywords, places or work modes would not keep are removed; anything the
+    // owner acted on or wrote a note on stays. Nothing is written to the rejected list here, so putting a keyword
+    // back lets the next crawl find those postings again.
     const rejected = rejection(r.title, r.location, facts.workMode, prefs, r.urls, r.source ?? "", r.description);
     if (rejected) {
-      const { rows: gone } = await pool.query<{ source: string; external_id: string }>(
-        `WITH del AS (DELETE FROM jobs j USING applications a WHERE a.job_id = j.id AND j.id = $1 AND a.status = 'new' RETURNING j.id)
-         SELECT s.source, s.external_id FROM job_sources s WHERE s.job_id IN (SELECT id FROM del)`,
+      const { rowCount } = await pool.query(
+        `DELETE FROM jobs j USING applications a
+          WHERE a.job_id = j.id AND j.id = $1 AND a.status = 'new' AND coalesce(a.note, '') = ''`,
         [r.id],
       );
-      if (gone.length) {
-        for (const g of gone) await reject(g.source, g.external_id, rejected);
+      if (rowCount) {
         dropped++;
         continue;
       }

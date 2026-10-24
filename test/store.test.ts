@@ -61,15 +61,18 @@ describe.skipIf(!testUrl)("savePosting", () => {
     await rescoreAll();
     const { rows } = await pool.query("SELECT id FROM jobs ORDER BY id");
     expect(rows.map((r) => r.id)).toEqual([triaged.jobId]);
-    expect(await markSeen("itviec", [base.externalId])).toEqual([]);
+    // Not blocked: putting the keyword back lets the next crawl find it again.
+    expect(await markSeen("itviec", [base.externalId])).toEqual([base.externalId]);
     await savePrefs(DEFAULT_PREFS);
     expect(dropped.status).toBe("new");
   });
 
-  it("reports which listed ids are new and closes postings unseen for a week", async () => {
+  it("reports which listed ids are new and closes board postings unseen for a month", async () => {
     await savePosting(base);
     expect(await markSeen("itviec", ["5841", "7000"])).toEqual(["7000"]);
     await pool.query("UPDATE jobs SET last_seen_at = now() - interval '8 days'");
+    expect(await closeStale()).toBe(0);
+    await pool.query("UPDATE jobs SET last_seen_at = now() - interval '31 days'");
     expect(await closeStale()).toBe(1);
   });
 });

@@ -50,7 +50,8 @@ const SKILLS: Record<string, RegExp> = {
   Cloudflare: /\bcloudflare\b/i,
   Bash: /\b(bash|shell script(ing)?)\b/i,
   Python: /\bpython\b/i,
-  Go: /\bgolang\b|\bgo lang\b/i,
+  // "Golang", or a bare "Go" given as a tag (sources' skill lists, and the stored stack passed back on rescoring).
+  Go: /\bgolang\b|\bgo lang\b|(?:^|[\n,])\s*Go\s*(?=$|[\n,])/m,
   Kafka: /\bkafka\b/i,
   PostgreSQL: /\b(postgres(ql)?)\b/i,
   MySQL: /\b(mysql|mariadb)\b/i,
@@ -129,7 +130,8 @@ export function parseSalary(input: string): Salary | null {
 }
 
 function parseSalaryAmount(input: string): Salary | null {
-  const s = input.replace(/\s+/g, " ");
+  // "15 triệu - 40 triệu" reads as "15 - 40 triệu".
+  const s = input.replace(/\s+/g, " ").replace(/(\d)\s*(triệu|tr)\s*(-|–|~|đến|to)\s*(\d)/gi, "$1 $3 $4");
   const num = (v: string) => Number(v.replace(/[.,](?=\d{3}\b)/g, "").replace(",", "."));
 
   const vnd = /(?:(?:từ|from)\s*)?(\d{1,3}(?:[.,]\d)?)\s*(?:-|–|~|to|đến)\s*(\d{1,3}(?:[.,]\d)?)\s*(?:triệu|tr\b|m\b|million)/i.exec(s);
@@ -139,7 +141,8 @@ function parseSalaryAmount(input: string): Salary | null {
   const vndFrom = /(?:từ|from|trên|over)\s*(\d{1,3}(?:[.,]\d)?)\s*(?:triệu|tr\b|m\b|million)/i.exec(s);
   if (vndFrom) return { min: num(vndFrom[1]) * MILLION, max: null, currency: "VND" };
 
-  const usd = /\$?\s*(\d{1,2}[.,]?\d{3})\s*(?:-|–|~|to)\s*\$?\s*(\d{1,2}[.,]?\d{3})\s*(?:usd|\$)?/i.exec(s);
+  // "$1,500 - 2,000", "800 - 1200 USD" (three-digit amounts count when a currency is named).
+  const usd = /\$?\s*(\d{1,2}[.,]?\d{3}|\d{3})\s*(?:-|–|~|to)\s*\$?\s*(\d{1,2}[.,]?\d{3}|\d{3})\s*(?:usd|\$)?/i.exec(s);
   if (usd && (/usd|\$/i.test(usd[0]))) return { min: num(usd[1]), max: num(usd[2]), currency: "USD" };
   const usdUpTo = /(?:up to|lên (?:đến|tới)|tới|max)\s*\$?\s*(\d{1,2}[.,]?\d{3})\s*(usd|\$)?/i.exec(s);
   if (usdUpTo && (usdUpTo[2] || /\$/.test(usdUpTo[0]))) return { min: null, max: num(usdUpTo[1]), currency: "USD" };
@@ -155,7 +158,7 @@ export function detectStack(text: string): string[] {
 export function detectLevel(title: string, text: string): { level: Level; years: number | null; excerpt?: string } {
   const t = title.toLowerCase();
   let level: Level = "unknown";
-  if (/\b(intern|thực tập)/i.test(t)) level = "intern";
+  if (/\b(intern|internship|thực tập)\b/i.test(t)) level = "intern";
   else if (/\bfresher|junior\b/i.test(t)) level = "junior";
   else if (/\b(manager|head of|trưởng phòng)\b/i.test(t)) level = "manager";
   else if (/\b(lead|principal|architect|trưởng nhóm)\b/i.test(t)) level = "lead";
@@ -168,7 +171,9 @@ export function detectLevel(title: string, text: string): { level: Level; years:
   const YEARS = /(\d{1,2})\s*\+?\s*(?:(?:-|–|~|to|đến)\s*(\d{1,2})\s*\+?\s*)?(?:năm|years?|yrs?)\b/i;
   // TopDev writes a range as "1 year, 3 years".
   text = text.replace(/(\d+)\s*years?,\s*(\d+)\s*years?/gi, "$1-$2 years");
-  const experienceLines = text.split("\n").filter((l) => /experience|kinh nghiệm|\bexp\b|\bKN\b/i.test(l)).join("\n");
+  // Lines about the company's own track record ("we have 10 years of experience in outsourcing") are skipped.
+  const COMPANY_RECORD = /\b(we|our company|our team|the company)\b[^.\n]{0,30}\b(have|has|bring|with)\b|chúng tôi (có|với)|công ty (có|với)|thành lập|founded|established/i;
+  const experienceLines = text.split("\n").filter((l) => /experience|kinh nghiệm|\bexp\b|\bKN\b/i.test(l) && !COMPANY_RECORD.test(l)).join("\n");
   const yearsHit = firstMatch(title, YEARS) ?? firstMatch(experienceLines, YEARS) ?? firstMatch(text, YEARS);
   // Company age ("23+ years of expertise") is not a requirement; no posting here asks for more than 15 years.
   const years = yearsHit && Number(yearsHit.match[1]) <= 15 ? Number(yearsHit.match[1]) : null;
@@ -193,7 +198,8 @@ export function detectWorkMode(text: string, title = ""): { mode: WorkMode; exce
   if (/\bhybrid\b/i.test(title)) return { mode: "hybrid", excerpt: title };
   const hybrid = firstMatch(text, /\bhybrid (work|working|model|mode|schedule)|work(ing)? hybrid|kết hợp (online|từ xa)|\(hybrid\)/i);
   if (hybrid) return { mode: "hybrid", excerpt: hybrid.excerpt };
-  const remote = firstMatch(text, /fully remote|100% remote|remote (work|working|position|job)|work(ing)? (fully )?remote(ly)?|work from home|làm việc từ xa/i);
+  // A remote role, not a remote perk ("remote working on Fridays", "work from home 2 days a week").
+  const remote = firstMatch(text, /fully remote|100% remote|remote[- ]first|remote (position|job|role)|this (is a|role is) remote|work(ing)? fully remote(ly)?|làm việc từ xa (hoàn toàn|100%)|full[- ]time remote/i);
   if (remote) return { mode: "remote", excerpt: remote.excerpt };
   const onsite = firstMatch(text, /\b(at office|onsite|on-site|làm việc tại văn phòng)\b/i);
   return onsite ? { mode: "onsite", excerpt: onsite.excerpt } : { mode: "unknown" };
@@ -234,10 +240,18 @@ export function detectForeignLanguage(text: string): { language: string | null; 
     ["Chinese", /tiếng trung|chinese|mandarin|\bhsk\b/i],
   ];
   const NOT_REQUIRED = /ưu tiên|lợi thế|là một lợi thế|điểm cộng|\bplus\b|advantage|preferred|nice to have|bonus|lớp|khóa học|khoá học|class|course|phụ cấp|allowance|hỗ trợ|support/i;
-  const REQUIRED = /\bn[1-3]\b|jlpt|topik|\bhsk\b|trở lên|thành thạo|giao tiếp|business|fluent|required|yêu cầu|bắt buộc|tốt|good|native/i;
+  // The requirement word must sit next to the language ("tiếng Nhật N2", "good Japanese", "Japanese (required)");
+  // "a Japanese company offering good benefits" is about the employer, not a requirement.
+  const LANG = "tiếng nhật|japanese|tiếng hàn|korean|tiếng trung|chinese|mandarin";
+  const REQUIRED = new RegExp(
+    `\\bn[1-3]\\b|jlpt|topik|\\bhsk\\b|(${LANG})\\s*[:(-]?\\s*(trở lên|thành thạo|giao tiếp|business|fluent|required|bắt buộc|tốt|giỏi|native|proficien|level)|` +
+      `(thành thạo|giao tiếp|business[- ]level|fluent|good|excellent|native|proficient|giỏi|biết)\\s+(in\\s+)?(${LANG})|(speak|read|write|communicate)[^.\\n]{0,20}(${LANG})`,
+    "i",
+  );
+  const ABOUT_EMPLOYER = /(japanese|korean|chinese) (company|client|customer|market|partner|owned|firm|corporation|enterprise)|(công ty|khách hàng|đối tác|doanh nghiệp|thị trường) (nhật|hàn|trung)/i;
   for (const line of text.split("\n")) {
     for (const [name, re] of NAMES) {
-      if (!re.test(line) || NOT_REQUIRED.test(line) || !REQUIRED.test(line)) continue;
+      if (!re.test(line) || NOT_REQUIRED.test(line) || !REQUIRED.test(line) || (ABOUT_EMPLOYER.test(line) && !/\bn[1-3]\b|jlpt|topik|hsk/i.test(line))) continue;
       const level = /\bn([1-3])\b/i.exec(line);
       return { language: level && name === "Japanese" ? `Japanese N${level[1]}` : name, excerpt: line.trim().slice(0, 240) };
     }
@@ -246,7 +260,7 @@ export function detectForeignLanguage(text: string): { language: string | null; 
 }
 
 export function detectAbroad(text: string): { abroad: boolean; excerpt?: string } {
-  const hit = firstMatch(text, /(onsite|làm việc|đào tạo|travel|business trip)[^.\n]{0,40}(nhật bản|japan|singapore|úc|australia|mỹ|usa|europe|châu âu)/i);
+  const hit = firstMatch(text, /(onsite|làm việc|đào tạo|travel|business trip)[^.\n]{0,40}(nhật bản|japan|singapore|(?<!\p{L})úc(?!\p{L})|australia|(?<!\p{L})mỹ(?!\p{L})|usa|europe|châu âu)/iu);
   return hit ? { abroad: true, excerpt: hit.excerpt } : { abroad: false };
 }
 
@@ -278,7 +292,7 @@ export function isRelevantTitle(title: string, keywords: string[]): boolean {
 // HCMC or remote; postings only in other cities are dropped. A place naming no known city is kept.
 const HCMC = /h[oồ] ch[ií] minh|\bhcm\b|tp\.? ?hcm|sài gòn|saigon|thủ đức|thu duc/i;
 // Other Vietnamese cities, and offices abroad that sister sites list next to the HCMC ones ("Japan Office").
-const OTHER_CITY = /hà nội|ha noi|hanoi|đà nẵng|da nang|danang|hải phòng|hai phong|cần thơ|can tho|nha trang|huế|bắc ninh|bac ninh|bình dương|binh duong|đồng nai|dong nai|biên hòa|bien hoa|long an|vũng tàu|vung tau|bà rịa|ba ria|hồ tràm|ho tram|bắc giang|hưng yên|vĩnh phúc|thái nguyên|quảng ninh|hạ long|đà lạt|quy nhơn|vinh\b|japan office|văn phòng nhật bản|tokyo|osaka/i;
+const OTHER_CITY = /hà nội|ha noi|hanoi|đà nẵng|da nang|danang|hải phòng|hai phong|cần thơ|can tho|nha trang|huế|bắc ninh|bac ninh|bình dương|binh duong|đồng nai|dong nai|biên hòa|bien hoa|long an|vũng tàu|vung tau|bà rịa|ba ria|hồ tràm|ho tram|bắc giang|hưng yên|vĩnh phúc|thái nguyên|quảng ninh|hạ long|đà lạt|quy nhơn|bình định|thuận an|dĩ an|tân uyên|vinh\b|japan office|văn phòng nhật bản|tokyo|osaka/i;
 
 // Places abroad, as they appear in a location, a title ("- Thailand, Bangkok") or a career-site address ("/REF5842J-Leeds").
 const ABROAD = /\b(japan|tokyo|osaka|singapore|thailand|bangkok|malaysia|kuala lumpur|indonesia|jakarta|philippines|manila|india|bangalore|bengaluru|pune|hyderabad|australia|sydney|melbourne|new zealand|united kingdom|england|london|leeds|manchester|ireland|dublin|germany|berlin|munich|switzerland|zurich|z[uü]rich|bern|geneva|denmark|copenhagen|aarhus|belgium|brussels|netherlands|amsterdam|france|paris|poland|warsaw|krakow|lithuania|vilnius|serbia|belgrade|romania|bucharest|spain|madrid|portugal|lisbon|sweden|stockholm|norway|oslo|finland|helsinki|usa|united states|new york|san francisco|seattle|canada|toronto|vancouver|korea|seoul|china|shanghai|beijing|hong kong|taiwan|taipei|dubai|nepal|kathmandu|mumbai|delhi|noida|gurgaon|gurugram|chennai|kolkata|ahmedabad|sri lanka|colombo|bangladesh|dhaka|pakistan|karachi|lahore|islamabad|cambodia|phnom penh|myanmar|yangon|laos|vientiane|egypt|cairo|nigeria|lagos|kenya|nairobi|south africa|cape town|brazil|são paulo|sao paulo|argentina|buenos aires|colombia|bogot[aá]|mexico|chile|santiago|peru|lima|turkey|istanbul|israel|tel aviv|ukraine|kyiv|greece|athens|italy|milan|rome|austria|vienna|czech|prague|hungary|budapest|bulgaria|sofia|croatia|zagreb|estonia|tallinn|latvia|riga)\b|metropolitan (region|area)(?![^,]*h[oồ] ch[ií] minh)/i;
@@ -292,6 +306,7 @@ const ABROAD = /\b(japan|tokyo|osaka|singapore|thailand|bangkok|malaysia|kuala l
 const REMOTE_OPEN = /worldwide|anywhere|global|everywhere|vietnam|việt nam|viet nam|\bapac\b|asia|gmt\s*\+\s*[5-9]|utc\s*\+\s*[5-9]|\bict\b|ho chi minh|hồ chí minh|\bhcm|sài gòn|saigon|hà nội|ha noi|hanoi|đà nẵng|da nang|cần thơ|hải phòng/i;
 
 export function remoteOpenToVietnam(region: string): boolean {
+  if (/anywhere in (the )?(us|u\.s\.|usa|united states|uk|europe|eu|canada|latam|americas?)\b/i.test(region)) return false;
   return !region.trim() || REMOTE_OPEN.test(region);
 }
 
@@ -305,6 +320,13 @@ export function bareRemote(location: string): boolean {
 
 export function openWidely(description: string): boolean {
   return OPEN_WIDELY.test(description);
+}
+
+// A plain "Remote" role whose text limits it to one country or region elsewhere.
+const ELSEWHERE_ONLY = /\b(u\.?s\.? citizen(ship)?|security clearance|clearance (is )?required|green card|work permit for the (us|uk|eu))\b|(must|need to|required to) (be )?(located|based|reside|live|work) (in|from) (the )?(us|u\.s\.|united states|usa|canada|uk|united kingdom|europe|eu|emea|latam|india)\b|\b(us|u\.s\.|usa|uk|eu)[- ]based (candidates|applicants|only)|\b(us|usa|u\.s\.|uk|eu|europe) only\b|(eligible|authori[sz]ed|legally able) to work in the (us|u\.s\.|united states|uk|united kingdom|eu)\b/i;
+
+export function remoteElsewhereOnly(description: string): boolean {
+  return ELSEWHERE_ONLY.test(description);
 }
 
 export function isWantedLocation(location: string, workMode: WorkMode, other = ""): boolean {

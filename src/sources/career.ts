@@ -6,11 +6,11 @@ import * as cheerio from "cheerio";
 import { pool } from "../db.js";
 import { fetchSite } from "../http.js";
 import { renderPage } from "../browser.js";
-import { enqueue, pauseHost } from "../queue.js";
+import { enqueue } from "../queue.js";
 import { robotsAllow } from "../robots.js";
 import { loadPrefs } from "../settings.js";
 import { htmlToText, isRelevantTitle } from "../extract.js";
-import { contentHash, markSeen, savePosting } from "../store.js";
+import { contentHash, markSeen, savePosting, touchCareerPostings } from "../store.js";
 import { askJson } from "../llm.js";
 import { HostRefusedError } from "../handlers/index.js";
 import { detectAts, listAtsJobs, type Ats } from "./ats.js";
@@ -18,7 +18,8 @@ import { noteOutboundLinks } from "./discovery.js";
 import { adoptName } from "../companies.js";
 import { readInterval } from "../relevance.js";
 import { postingConfidence, siteMatch } from "../trust.js";
-import { bareRemote, openWidely, remoteOpenToVietnam } from "../extract.js";
+import { bareRemote, openWidely, remoteElsewhereOnly, remoteOpenToVietnam } from "../extract.js";
+export { remoteElsewhereOnly };
 import { HOUR, type Source } from "./types.js";
 import type { Task } from "../queue.js";
 import type { HandlerResult } from "../handlers/index.js";
@@ -126,19 +127,14 @@ export function links(html: string, base: string): Link[] {
 // Offices in HCMC, or remote work open to someone in Vietnam ("Remote - APAC", plain "Remote"); not
 // "Remote - European Union" or "Remote US" (src/extract.ts holds the region rule).
 export function wantedCareerLocation(location: string): boolean {
-  if (!location.trim()) return true;
+  // Empty, or Workday's "3 Locations" for roles in several places: judged later from the posting itself.
+  if (!location.trim() || /^\d+ locations?$/i.test(location.trim())) return true;
   if (/viet ?nam|việt nam|ho chi minh|hồ chí minh|hcm|saigon|sài gòn/i.test(location)) return true;
   if (!/remote/i.test(location)) return false;
   return location.split(/;|\|/).some((part) => /remote/i.test(part) && remoteOpenToVietnam(part.replace(/remote|[-–(),:]/gi, " ")));
 }
 
 
-// A plain "Remote" role whose text limits it to one country or region elsewhere.
-const ELSEWHERE_ONLY = /\b(u\.?s\.? citizen(ship)?|security clearance|clearance (is )?required|green card|work permit for the (us|uk|eu))\b|(must|need to|required to) (be )?(located|based|reside|live|work) (in|from) (the )?(us|u\.s\.|united states|usa|canada|uk|united kingdom|europe|eu|emea|latam|india)\b|\b(us|u\.s\.|usa|uk|eu)[- ]based (candidates|applicants|only)|\b(us|usa|u\.s\.|uk|eu|europe) only\b|(eligible|authori[sz]ed|legally able) to work in the (us|u\.s\.|united states|uk|united kingdom|eu)\b/i;
-
-export function remoteElsewhereOnly(description: string): boolean {
-  return ELSEWHERE_ONLY.test(description);
-}
 
 // A job title names a role; service and product pages ("Cloud & DevOps Services", "Infrastructure Advisory") do not.
 const ROLE = /\bengineers?\b|kỹ sư|ky su|specialist|chuyên viên|administrator|\badmin\b|\blead\b|manager|trưởng nhóm|trưởng phòng|architect|developer|lập trình viên|\bsre\b|devops\b.*\b(engineers?|lead)\b|intern|thực tập|nhân viên|consultant/i;
@@ -159,6 +155,7 @@ export function looksLikePosting(text: string): boolean {
   return postingConfidence(text) !== "no";
 }
 
+const HCMC_PLACE = /(h[oồ] ch[ií] minh|tp\.? ?hcm|sài gòn|saigon)[^\n]{0,40}/i;
 const CITY = /(h[oồ] ch[ií] minh|hcm|sài gòn|saigon|hà nội|ha noi|hanoi|đà nẵng|da nang|japan office|văn phòng nhật bản|tokyo|osaka)[^\n]{0,40}/i;
 
 const urlId = (url: string) => createHash("sha1").update(url).digest("hex").slice(0, 16);
@@ -248,8 +245,10 @@ type LlmPostings = { postings?: { title?: string; url?: string | null; location?
 
 // A company site that cannot be read (dead domain, broken TLS, bot protection, error page) is a fact about that
 // site, not a crawler fault: it is recorded on the company or page and retried much later instead of five times now.
+// A refusal (429/403) is rethrown by the handlers so the worker pauses the host, defers the task and keeps the
+// back-off growing; only other failures are recorded here.
 async function siteFailed(task: Task, err: unknown): Promise<string> {
-  if (err instanceof HostRefusedError) await pauseHost(task.host, err.retryAfterSeconds);
+  void task;
   const cause = err instanceof Error && "cause" in err && err.cause instanceof Error ? `: ${err.cause.message}` : "";
   return `${err instanceof Error ? err.message : String(err)}${cause}`.slice(0, 300);
 }
@@ -269,6 +268,7 @@ export const career: Source = {
       try {
         return await discover(task);
       } catch (err) {
+        if (err instanceof HostRefusedError) throw err;
         const message = await siteFailed(task, err);
         const { rows } = await pool.query<{ career_failures: number }>(
           "UPDATE companies SET career_status = 'error', career_checked_at = now(), career_failures = career_failures + 1 WHERE id = $1 RETURNING career_failures",
@@ -284,19 +284,17 @@ export const career: Source = {
       try {
         return await readCareerPage(task);
       } catch (err) {
+        if (err instanceof HostRefusedError) throw err;
         const message = await siteFailed(task, err);
         await pool.query("UPDATE career_pages SET status = 'error', last_error = $2, last_fetched_at = now() WHERE id = $1", [Number(task.payload.careerPageId), message]);
-        return { recrawlAfterSeconds: MAX_INTERVAL };
+        // Tomorrow, not next week: a page that failed once is usually back by then.
+        return { recrawlAfterSeconds: DAY };
       }
     },
 
     "career-job": async (task) => {
-      try {
-        return await readCareerJob(task);
-      } catch (err) {
-        await siteFailed(task, err);
-        return {};
-      }
+      // Failures go to the worker: a refusal pauses the host, anything else is retried with back-off (five tries).
+      return readCareerJob(task);
     },
   },
 };
@@ -401,7 +399,16 @@ async function readCareerPage(task: Task): Promise<HandlerResult> {
     await done("none", MAX_INTERVAL);
     return { recrawlAfterSeconds: MAX_INTERVAL };
   }
-  const html = await readSite(task.url);
+  // Some sites answer only on the www. spelling, which normalised addresses drop.
+  let html: string;
+  try {
+    html = await readSite(task.url);
+  } catch (err) {
+    if (err instanceof HostRefusedError) throw err;
+    const www = siteVariants(task.url).find((v) => v.startsWith("https://www."));
+    if (!www || www === task.url) throw err;
+    html = await readSite(www);
+  }
   const text = mainText(html);
   if (needsBrowser(html, text)) {
     await done("needs_browser", MAX_INTERVAL);
@@ -423,6 +430,8 @@ async function readCareerPage(task: Task): Promise<HandlerResult> {
   if (hash === page.content_hash) {
     const interval = Math.min(page.check_interval_s * 2, cap);
     await done("found", interval);
+    // Unchanged page, same postings: keep them open (they are not re-read, so nothing else refreshes them).
+    await touchCareerPostings(c.id, new URL(task.url).hostname);
     return { fetched: 1, recrawlAfterSeconds: interval };
   }
 
@@ -492,6 +501,8 @@ async function readCareerJob(task: Task): Promise<HandlerResult> {
     );
     return { fetched: 1 };
   }
-  await saveCareerPosting(c.name, { id: urlId(task.url), url: task.url, title, location: CITY.exec(text)?.[0] ?? "", description: text });
+  // An HCMC office named anywhere on the page wins over a head-office city mentioned first.
+  const location = HCMC_PLACE.exec(text)?.[0] ?? CITY.exec(text)?.[0] ?? "";
+  await saveCareerPosting(c.name, { id: urlId(task.url), url: task.url, title, location, description: text });
   return { fetched: 1 };
 }

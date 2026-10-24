@@ -29,6 +29,13 @@ async function takeBudget(budget: Budget): Promise<boolean> {
   return rows[0].n <= BUDGETS[budget].limit;
 }
 
+// Whether calls are left today in a budget (a null answer with budget left means the answer itself was bad).
+export async function budgetLeft(budget: Budget): Promise<boolean> {
+  const key = `${BUDGETS[budget].prefix}-${new Date().toISOString().slice(0, 10)}`;
+  const { rows } = await pool.query<{ n: number }>("SELECT (value)::text::int AS n FROM settings WHERE key = $1", [key]);
+  return (rows[0]?.n ?? 0) < BUDGETS[budget].limit;
+}
+
 export async function llmCallsToday(): Promise<number> {
   const { rows } = await pool.query<{ n: number }>("SELECT (value)::text::int AS n FROM settings WHERE key = $1", [`llm-calls-${new Date().toISOString().slice(0, 10)}`]);
   return Math.min(rows[0]?.n ?? 0, LLM_DAILY_LIMIT);

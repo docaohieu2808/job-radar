@@ -5,7 +5,7 @@
 // name joins the company registry with its website, so its own career page or ATS board is then read daily too.
 import * as cheerio from "cheerio";
 import { fetchJson, fetchText } from "../http.js";
-import { savePosting, type Posting } from "../store.js";
+import { saveOne, savePosting, type Posting } from "../store.js";
 import { htmlToText } from "../extract.js";
 import { ensureCompany, websiteFromLinks, websiteFromText } from "../companies.js";
 import { detectAts } from "./ats.js";
@@ -27,7 +27,7 @@ type HimalayasJob = {
 };
 
 export function himalayasPosting(j: HimalayasJob): Posting {
-  const region = j.locationRestrictions.length ? j.locationRestrictions.join(", ") : "Worldwide";
+  const region = j.locationRestrictions?.length ? j.locationRestrictions.join(", ") : "Worldwide";
   const salary = j.maxSalary && j.currency ? `${j.minSalary ?? ""} - ${j.maxSalary} ${j.currency}` : undefined;
   return {
     source: "himalayas",
@@ -87,7 +87,7 @@ export function nomadsPosting(j: NomadsJob): Posting {
     companyWebsite: { url: websiteFromLinks(j.company_name, j.description), source: "remote board" },
     companyAts: atsLinkIn(j.description),
     location: `Remote (${j.location || "Worldwide"})`,
-    tags: [...REMOTE, ...j.tags.split(",").map((s) => s.trim()).filter(Boolean)],
+    tags: [...REMOTE, ...(j.tags ?? "").split(",").map((s) => s.trim()).filter(Boolean)],
     description: htmlToText(j.description),
     postedAt: j.pub_date ? new Date(j.pub_date) : null,
   };
@@ -144,7 +144,7 @@ async function saveAll(postings: Posting[]): Promise<void> {
       const ats = p.companyAts ? detectAts(p.companyAts) : null;
       if (ats && p.companyAts) await addCareerPage(id, p.companyAts, ats, 0);
     }
-    await savePosting(p);
+    await saveOne(() => savePosting(p), p.url);
   }
 }
 

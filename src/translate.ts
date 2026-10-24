@@ -1,7 +1,7 @@
 // Vietnamese for English postings, through the LLM on the same node: a summary to skim (what the job is, the main
 // requirements, the benefits, the catches) and, on request, a full translation of the description.
 import { pool } from "./db.js";
-import { askJson } from "./llm.js";
+import { askJson, budgetLeft } from "./llm.js";
 import { config } from "./config.js";
 import { enqueue } from "./queue.js";
 import { isVietnameseText } from "./extract.js";
@@ -71,8 +71,15 @@ export const translation: Source = {
   seeds: [],
   hostIntervalSeconds: llmHost ? { [llmHost]: 3 } : {},
   handlers: {
-    // Over today's budget or the LLM down: try again in six hours.
-    "translate-summary": async (task) => ((await summarize(Number(task.payload.jobId))) ? {} : { recrawlAfterSeconds: 6 * 3600 }),
+    // Done when summarised, when the job is gone, or when the LLM answered badly with budget left; only an empty
+    // budget waits six hours for the next day's calls.
+    "translate-summary": async (task) => {
+      const jobId = Number(task.payload.jobId);
+      const { rowCount } = await pool.query("SELECT 1 FROM jobs WHERE id = $1", [jobId]);
+      if (!rowCount || !config.llmBaseUrl) return {};
+      if (await summarize(jobId)) return {};
+      return (await budgetLeft("translate")) ? {} : { recrawlAfterSeconds: 6 * 3600 };
+    },
   },
 };
 

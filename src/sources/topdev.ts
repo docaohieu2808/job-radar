@@ -1,6 +1,6 @@
 // TopDev public API: one request returns full postings, so no per-posting fetch is needed.
 import { fetchJson } from "../http.js";
-import { savePosting, type Posting } from "../store.js";
+import { saveOne, savePosting, type Posting } from "../store.js";
 import { htmlToText } from "../extract.js";
 import { HOUR, type Source } from "./types.js";
 
@@ -67,7 +67,7 @@ export const topdev: Source = {
   handlers: {
     "topdev-search": async (task) => {
       const body = await fetchJson<{ data: TopDevJob[] }>(task.url);
-      for (const job of body.data ?? []) await savePosting(toPosting(job));
+      for (const job of body.data ?? []) await saveOne(() => savePosting(toPosting(job)), job.detail_url);
       return { recrawlAfterSeconds: 12 * HOUR, fetched: 1 };
     },
   },

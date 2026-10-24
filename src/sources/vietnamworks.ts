@@ -1,6 +1,6 @@
 // VietnamWorks search API (POST). Full postings come back in the search response.
 import { fetchText } from "../http.js";
-import { savePosting, type Posting } from "../store.js";
+import { saveOne, savePosting, type Posting } from "../store.js";
 import { htmlToText } from "../extract.js";
 import { websiteFromText } from "../companies.js";
 import { HOUR, type Source } from "./types.js";
@@ -30,10 +30,13 @@ type VnwJob = {
 
 export function toPosting(j: VnwJob): Posting {
   const hasSalary = j.isSalaryVisible !== false && (j.salaryMin > 0 || j.salaryMax > 0);
-  const unit = j.salaryCurrency === "VND" ? "" : " USD";
-  const toText = (v: number) => (j.salaryCurrency === "VND" ? `${Math.round(v / 1_000_000)} triệu` : String(v));
+  // Some rows carry VND amounts with currency "USD" (salaryMax 40000000); amounts in the millions are VND.
+  const vnd = j.salaryCurrency === "VND" || Math.max(j.salaryMin, j.salaryMax) >= 1_000_000;
+  const unit = vnd ? "" : " USD";
+  const amount = (v: number) => (vnd ? String(Math.round(v / 1_000_000)) : String(v));
+  const suffix = vnd ? " triệu" : unit;
   const salaryText = hasSalary
-    ? j.salaryMin > 0 && j.salaryMax > 0 ? `${toText(j.salaryMin)} - ${toText(j.salaryMax)}${unit}` : `up to ${toText(j.salaryMax || j.salaryMin)}${unit}`
+    ? j.salaryMin > 0 && j.salaryMax > 0 ? `${amount(j.salaryMin)} - ${amount(j.salaryMax)}${suffix}` : `up to ${amount(j.salaryMax || j.salaryMin)}${suffix}`
     : undefined;
   const locations = (j.workingLocations ?? []).map((l) => [l.address, l.cityName].filter(Boolean).join(", "));
   return {
@@ -73,7 +76,7 @@ export const vietnamworks: Source = {
           body: JSON.stringify({ userId: 0, query, filter: [], ranges: [], order: [], hitsPerPage: 50, page: 0 }),
         }),
       ) as { data: VnwJob[] };
-      for (const job of body.data ?? []) await savePosting(toPosting(job));
+      for (const job of body.data ?? []) await saveOne(() => savePosting(toPosting(job)), job.jobUrl ?? String(job.jobId));
       return { recrawlAfterSeconds: 12 * HOUR, fetched: 1 };
     },
   },

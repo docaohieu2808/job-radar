@@ -16,8 +16,11 @@ export class Worker {
   constructor(private readonly concurrency: number) {}
 
   async run(signal: AbortSignal): Promise<void> {
-    await releaseStaleLocks();
-    const flusher = setInterval(() => void this.flush(), FLUSH_EVERY_MS);
+    await releaseStaleLocks(0);
+    const flusher = setInterval(() => {
+      void this.flush();
+      void releaseStaleLocks().catch((err) => console.error("release stale locks failed", err));
+    }, FLUSH_EVERY_MS);
     const lanes = Array.from({ length: this.concurrency }, () => this.lane(signal));
     await Promise.all(lanes);
     clearInterval(flusher);
@@ -36,7 +39,8 @@ export class Worker {
         await sleep(IDLE_WAIT_MS, signal);
         continue;
       }
-      await this.handle(task);
+      // A database error while recording the outcome must not end the lane (and strand the task).
+      await this.handle(task).catch((err) => console.error(`recording ${task?.kind} ${task?.url} failed`, err));
     }
   }
 

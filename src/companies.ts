@@ -25,6 +25,8 @@ export function siteRoot(raw: string): string | null {
 // ("lienpta@tinhvan.com" for "Tinhvan Software JSC"); recruiters and agencies are skipped.
 export function websiteFromEmails(companyName: string, text: string): string | null {
   const key = normalizeKey(companyName).replace(/\s+/g, "");
+  // A name that normalises to nothing ("", "Vietnam Inc") would match every domain.
+  if (key.length < 3) return null;
   for (const m of text.matchAll(/[\w.+-]+@([\w-]+(?:\.[\w-]+)+)/g)) {
     const domain = m[1].toLowerCase();
     if (FREE_MAIL.test(domain)) continue;
@@ -37,6 +39,7 @@ export function websiteFromEmails(companyName: string, text: string): string | n
 // A link in a remote-board posting whose domain resembles the company name ("https://alpaca.markets" for "Alpaca").
 export function websiteFromLinks(companyName: string, text: string): string | null {
   const key = normalizeKey(companyName).replace(/\s+/g, "");
+  if (key.length < 3) return null;
   for (const m of text.matchAll(/https?:\/\/[^\s"'<>)]+/g)) {
     const root = siteRoot(m[0]);
     if (!root) continue;
@@ -68,6 +71,15 @@ export async function adoptName(companyId: number, name: string): Promise<number
     return companyId;
   }
   const target = Number(rows[0].id);
+  // The owner's watch mark and website move with the board.
+  await pool.query(
+    `UPDATE companies t SET watch = t.watch OR s.watch,
+            website = CASE WHEN s.website_source = 'owner' THEN s.website ELSE t.website END,
+            website_source = CASE WHEN s.website_source = 'owner' THEN 'owner' ELSE t.website_source END
+       FROM companies s WHERE t.id = $2 AND s.id = $1`,
+    [companyId, target],
+  );
+  await pool.query("DELETE FROM crawl_queue WHERE kind = 'career-discover' AND (payload->>'companyId')::bigint = $1", [companyId]);
   await pool.query("UPDATE career_pages SET company_id = $2 WHERE company_id = $1", [companyId, target]);
   await pool.query("UPDATE jobs SET company_id = $2 WHERE company_id = $1", [companyId, target]);
   await pool.query("UPDATE domain_candidates SET company_id = $2 WHERE company_id = $1", [companyId, target]);
@@ -101,6 +113,10 @@ export async function ensureCompany(
   const c = rows[0];
   const id = Number(c.id);
   const url = website?.url ? siteRoot(website.url) : null;
+  // The owner confirming the address already stored makes it theirs, so nothing found later replaces it.
+  if (url && website?.source === "owner" && url === c.website && c.website_source !== "owner") {
+    await client.query("UPDATE companies SET website_source = 'owner' WHERE id = $1", [id]);
+  }
   if (url && website && (SOURCE_RANK[website.source] ?? 0) > (SOURCE_RANK[c.website_source ?? ""] ?? 0) && url !== c.website) {
     await client.query("UPDATE companies SET website = $2, website_source = $3, career_status = 'unknown' WHERE id = $1", [id, url, website.source]);
     await enqueue("career-discover", url, { priority: discoveredVia === "posting" ? 60 : 90, payload: { companyId: id } });

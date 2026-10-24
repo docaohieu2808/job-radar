@@ -174,7 +174,7 @@ export async function tryNow(sourceId: string): Promise<TryResult> {
   const kind = `${s.id}-search`;
   const { rows } = await pool.query<Task>(
     `UPDATE crawl_queue SET locked_at = now(), attempts = attempts + 1
-      WHERE id = (SELECT id FROM crawl_queue WHERE kind = $1 AND done_at IS NULL AND locked_at IS NULL ORDER BY priority LIMIT 1)
+      WHERE id = (SELECT id FROM crawl_queue WHERE kind = $1 AND done_at IS NULL AND locked_at IS NULL ORDER BY priority LIMIT 1 FOR UPDATE SKIP LOCKED)
       RETURNING id, kind, url, host, payload, attempts`,
     [kind],
   );

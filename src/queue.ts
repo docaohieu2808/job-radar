@@ -40,6 +40,8 @@ export async function claim(): Promise<Task | null> {
         WHERE q.done_at IS NULL AND q.locked_at IS NULL AND q.next_fetch_at <= now()
           AND h.next_allowed_at <= now()
           AND (h.blocked_until IS NULL OR h.blocked_until <= now())
+          -- One request in flight per host, also when a task runs longer than the host's interval.
+          AND NOT EXISTS (SELECT 1 FROM crawl_queue r WHERE r.host = q.host AND r.locked_at IS NOT NULL)
         ORDER BY q.priority, q.next_fetch_at
         LIMIT 1
         FOR UPDATE OF q, h SKIP LOCKED`,
@@ -74,7 +76,19 @@ export function backoffSeconds(attempts: number): number {
   return Math.min(60 * 2 ** Math.max(0, attempts - 1), 6 * 3600);
 }
 
+// Recurring tasks (searches, feeds, career pages) must never die: after the last attempt they rest six hours
+// and start counting again, keeping the error visible on the Sources screen meanwhile.
+const RECURRING = /-search$|^directory-|^career-page$|^career-discover$/;
+
 export async function fail(task: Task, error: string, maxAttempts = 5): Promise<"retry" | "dead"> {
+  if (task.attempts >= maxAttempts && RECURRING.test(task.kind)) {
+    await pool.query(
+      `UPDATE crawl_queue SET locked_at = NULL, attempts = 0, last_error = $2, last_run_at = now(),
+              next_fetch_at = now() + interval '6 hours' WHERE id = $1`,
+      [task.id, error],
+    );
+    return "retry";
+  }
   if (task.attempts >= maxAttempts) {
     await pool.query("UPDATE crawl_queue SET locked_at = NULL, done_at = now(), last_error = $2, last_run_at = now() WHERE id = $1", [task.id, error]);
     return "dead";
@@ -100,7 +114,7 @@ export const MAX_PAUSE_SECONDS = 6 * 3600;
 export async function pauseHost(host: string, retryAfterSeconds: number | null): Promise<Date> {
   const { rows } = await pool.query<{ blocked_until: Date }>(
     `UPDATE hosts SET refusals = refusals + 1,
-            blocked_until = now() + make_interval(secs => COALESCE($2, LEAST($3 * power(2, refusals), $4)))
+            blocked_until = now() + make_interval(secs => LEAST(COALESCE($2, $3 * power(2, refusals)), $4))
       WHERE host = $1 RETURNING blocked_until`,
     [host, retryAfterSeconds, FIRST_PAUSE_SECONDS, MAX_PAUSE_SECONDS],
   );
@@ -124,11 +138,12 @@ export async function clearRefusals(host: string): Promise<void> {
     await pool.query("UPDATE crawl_queue SET last_error = NULL WHERE host = $1 AND done_at IS NULL AND last_error LIKE 'host refused%'", [host]);
 }
 
-// Releases tasks claimed by a worker that crashed or was restarted mid-task.
-export async function releaseStaleLocks(): Promise<number> {
+// Releases tasks claimed by a worker that crashed or was restarted mid-task. At crawler start every lock is
+// stale (one crawler process); while running, locks older than the stale limit are freed periodically.
+export async function releaseStaleLocks(olderThanMinutes = config.staleLockMinutes): Promise<number> {
   const { rowCount } = await pool.query(
-    "UPDATE crawl_queue SET locked_at = NULL WHERE locked_at < now() - make_interval(mins => $1) AND done_at IS NULL",
-    [config.staleLockMinutes],
+    "UPDATE crawl_queue SET locked_at = NULL WHERE locked_at <= now() - make_interval(mins => $1) AND done_at IS NULL",
+    [olderThanMinutes],
   );
   return rowCount ?? 0;
 }
