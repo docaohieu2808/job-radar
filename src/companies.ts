@@ -9,7 +9,7 @@ import { enqueue } from "./queue.js";
 const SOURCE_RANK: Record<string, number> = { owner: 4, topdev: 3, vietnamworks: 2, "contact email": 1, "remote board": 1, "discovered link": 1 };
 
 const FREE_MAIL = /(^|\.)(gmail|yahoo|outlook|hotmail|icloud|live|msn|proton|protonmail|aol|zoho)\./i;
-const NOT_A_COMPANY_SITE = /(^|\.)(itviec|topcv|topdev|vietnamworks|linkedin|facebook|google|youtube|careerviet|careerlink|glints|indeed|vieclam24h|himalayas|weworkremotely|workingnomads|itjobs|monster|5job|vieclamso1|joblinks|vieclambinhduong|timviec365|careerbuilder|jobsgo|jobstreet|twitter|x|instagram|github|medium)\./i;
+const NOT_A_COMPANY_SITE = /(^|\.)(itviec|topcv|topdev|vietnamworks|linkedin|facebook|google|youtube|careerviet|careerlink|glints|indeed|vieclam24h|himalayas|weworkremotely|workingnomads|itjobs|saramin|techspaces|monster|5job|vieclamso1|joblinks|vieclambinhduong|timviec365|careerbuilder|jobsgo|jobstreet|twitter|x|instagram|github|medium)\./i;
 
 export function siteRoot(raw: string): string | null {
   try {

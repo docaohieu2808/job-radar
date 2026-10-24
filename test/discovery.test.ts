@@ -16,6 +16,7 @@ describe("link discovery", () => {
     expect(candidateDomain("https://blog.acme.vn/post", "https://acme.vn")).toBeNull();
     expect(candidateDomain("mailto:hr@acme.vn", "https://acme.vn")).toBeNull();
     expect(candidateDomain("https://lnkd.in/abc", "https://acme.vn")).toBeNull();
+    expect(candidateDomain("https://saramin.vn/jobs", "https://acme.vn")).toBeNull();
     expect(candidateDomain("https://jobs.ashbyhq.com/acme", "https://acme.vn")).toBeNull();
     expect(candidateDomain("https://acme.sharepoint.com/sites/x", "https://acme.vn")).toBeNull();
   });

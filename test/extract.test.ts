@@ -146,3 +146,11 @@ describe("tidyText", () => {
     expect(tidyText("Yêu cầu kỹ thuật:\nDevOps\n,\nGCP\n,\nMS Azure\n-\nNext line")).toBe("Yêu cầu kỹ thuật: DevOps, GCP, MS Azure\nNext line");
   });
 });
+
+describe("htmlToText", () => {
+  it("does not leak attributes that contain >", async () => {
+    const { htmlToText } = await import("../src/extract.js");
+    const html = `<div class="[&>span]:line-clamp-1 flex" aria-label="Language"><span>Tiếng Việt</span></div><p>DevOps &amp; <b>Kubernetes</b></p><ul><li>Docker</li><li>Linux</li></ul>`;
+    expect(htmlToText(html)).toBe("Tiếng Việt\nDevOps & Kubernetes\n- Docker\n- Linux");
+  });
+});

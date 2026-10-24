@@ -1,6 +1,8 @@
 // Rule-based extraction of the facts the score needs, from a posting's title, tags and description.
 // Every value keeps the sentence it came from (excerpts) so a wrong extraction can be checked against the source.
 
+import * as cheerio from "cheerio";
+
 export type WorkMode = "onsite" | "hybrid" | "remote" | "unknown";
 export type Level = "intern" | "junior" | "middle" | "senior" | "lead" | "manager" | "unknown";
 export type English = "none" | "basic" | "good" | "fluent" | "unknown";
@@ -75,20 +77,25 @@ export function tidyText(text: string): string {
     .trim();
 }
 
+// Text of an HTML fragment, read with a real parser: tag attributes that contain ">" (Tailwind classes such as
+// "[&>span]:line-clamp-1") cannot leak into the text, and block elements become line breaks.
+const BLOCK = "p,div,li,ul,ol,h1,h2,h3,h4,h5,h6,section,article,header,footer,tr,table,blockquote,pre,dt,dd";
+
 export function htmlToText(html: string): string {
-  return tidyText(html
-    .replace(/<(br|\/p|\/li|\/h\d|\/div)\s*\/?>/gi, "\n")
-    .replace(/<li[^>]*>/gi, "- ")
-    .replace(/<[^>]+>/g, " ")
-    .replace(/&nbsp;/g, " ")
-    .replace(/&amp;/g, "&")
-    .replace(/&lt;/g, "<")
-    .replace(/&gt;/g, ">")
-    .replace(/&#39;|&rsquo;/g, "'")
-    .replace(/&quot;/g, '"')
-    .replace(/[ \t]+/g, " ")
-    .replace(/\n\s*\n+/g, "\n")
-    .trim());
+  const $ = cheerio.load(html);
+  $("script,style,noscript,template,svg").remove();
+  $("br").replaceWith("\n");
+  $("li").each((_, el) => void $(el).prepend("- "));
+  $(BLOCK).each((_, el) => void $(el).append("\n"));
+  return tidyText(
+    $.root()
+      .text()
+      .replace(/\u00a0/g, " ")
+      .replace(/[ \t]+/g, " ")
+      .replace(/ *\n */g, "\n")
+      .replace(/\n\s*\n+/g, "\n")
+      .trim(),
+  );
 }
 
 // The sentence (or line) around a match, for excerpts.
