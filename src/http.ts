@@ -24,7 +24,7 @@ export class ResponseTooLargeError extends Error {
 }
 
 // Read the body as text, stopping as soon as it passes the limit instead of buffering all of it first.
-async function readCapped(res: Response, url: string): Promise<string> {
+export async function readCapped(res: Response, url: string): Promise<string> {
   const declared = Number(res.headers.get("content-length"));
   if (Number.isFinite(declared) && declared > MAX_BODY_BYTES) {
     await res.body?.cancel();
@@ -57,6 +57,18 @@ function errorCode(err: unknown): string {
 
 export function isTlsOnly(err: unknown): boolean {
   return TLS_ONLY.has(errorCode(err));
+}
+
+// A GET for robots.txt: same certificate fallback as the page reads, so a site with a broken certificate gets
+// its robots.txt honoured instead of being treated as unreachable (and then read anyway through fetchSite).
+export async function fetchRobotsTxt(url: string, headers: Record<string, string>): Promise<Response> {
+  const init = { headers, signal: AbortSignal.timeout(15_000) };
+  try {
+    return await fetch(url, init);
+  } catch (err) {
+    if (!isTlsOnly(err)) throw err;
+    return (await undiciFetch(url, { ...init, dispatcher: lenientTls } as Parameters<typeof undiciFetch>[1])) as unknown as Response;
+  }
 }
 
 // fetchText for a company site: a certificate-only failure is retried without certificate checks.

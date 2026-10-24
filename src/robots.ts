@@ -1,6 +1,7 @@
 // robots.txt for company sites: fetched once per host per week, only the "*" group is honoured.
 import { pool } from "./db.js";
 import { config } from "./config.js";
+import { fetchRobotsTxt, readCapped } from "./http.js";
 
 const WEEK_MS = 7 * 86_400_000;
 
@@ -61,8 +62,9 @@ export async function robotsAllow(url: string): Promise<boolean> {
     // ask again in an hour, rather than crawling it freely for a week.
     let fetchedAt = new Date();
     try {
-      const res = await fetch(`${u.origin}/robots.txt`, { headers: { "user-agent": config.userAgent }, signal: AbortSignal.timeout(15_000) });
-      if (res.ok) robots = (await res.text()).slice(0, 100_000);
+      const res = await fetchRobotsTxt(`${u.origin}/robots.txt`, { "user-agent": config.userAgent });
+      // Read through the size cap: an oversized robots.txt must not be buffered whole (it fails closed below).
+      if (res.ok) robots = (await readCapped(res, `${u.origin}/robots.txt`)).slice(0, 100_000);
       else if (res.status < 500) robots = "";
       else throw new Error(`robots.txt answered ${res.status}`);
     } catch {

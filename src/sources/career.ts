@@ -312,6 +312,8 @@ async function discover(task: Task): Promise<HandlerResult> {
   let fetched = 0;
   let lastError: unknown = null;
   for (const v of siteVariants(task.url)) {
+    // www. and http spellings can be a different host with its own robots.txt.
+    if (v !== task.url && !(await robotsAllow(v))) continue;
     fetched++;
     try {
       html = await readSite(v);
@@ -321,6 +323,11 @@ async function discover(task: Task): Promise<HandlerResult> {
       if (err instanceof HostRefusedError) throw err;
       lastError = err;
     }
+  }
+  if (html === null && lastError === null) {
+    // Every spelling that could be read is disallowed by its robots.txt.
+    await setCareerStatus(c.id, "none");
+    return { recrawlAfterSeconds: REDISCOVER_AFTER };
   }
   if (html === null) throw lastError;
   if (base !== task.url) await pool.query("UPDATE companies SET website = $2 WHERE id = $1", [c.id, new URL(base).origin]);
@@ -406,7 +413,7 @@ async function readCareerPage(task: Task): Promise<HandlerResult> {
   } catch (err) {
     if (err instanceof HostRefusedError) throw err;
     const www = siteVariants(task.url).find((v) => v.startsWith("https://www."));
-    if (!www || www === task.url) throw err;
+    if (!www || www === task.url || !(await robotsAllow(www))) throw err;
     html = await readSite(www);
   }
   const text = mainText(html);

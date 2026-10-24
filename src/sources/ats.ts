@@ -34,6 +34,10 @@ const decode = (s: string) => s.replace(/&lt;/g, "<").replace(/&gt;/g, ">").repl
 
 // Workday has no full listing; it is searched with a few DevOps-family words.
 const WORKDAY_SEARCHES = ["devops", "sre", "cloud", "platform"];
+// Paging caps: enough for any board we read (the largest Workday tenants list a few dozen matches per word),
+// small enough that one giant board cannot hold a worker lane for minutes.
+const WORKDAY_MAX_PER_SEARCH = 100;
+const SMARTRECRUITERS_MAX = 1000;
 
 export async function listAtsJobs(ats: Ats): Promise<AtsJob[]> {
   if (ats.kind === "greenhouse") {
@@ -70,10 +74,17 @@ export async function listAtsJobs(ats: Ats): Promise<AtsJob[]> {
     }));
   }
   if (ats.kind === "smartrecruiters") {
-    const body = await fetchJson<{ content: { id: string; name: string; ref: string; location?: { city?: string; country?: string; remote?: boolean } }[] }>(
-      `https://api.smartrecruiters.com/v1/companies/${encodeURIComponent(ats.board)}/postings?limit=100`,
-    );
-    return body.content.map((j) => ({
+    type SrPosting = { id: string; name: string; ref: string; location?: { city?: string; country?: string; remote?: boolean } };
+    // 100 per page, following totalFound; capped so one huge board cannot eat the run.
+    const postings: SrPosting[] = [];
+    for (let offset = 0; offset < SMARTRECRUITERS_MAX; offset += 100) {
+      const page = await fetchJson<{ totalFound?: number; content: SrPosting[] }>(
+        `https://api.smartrecruiters.com/v1/companies/${encodeURIComponent(ats.board)}/postings?limit=100&offset=${offset}`,
+      );
+      postings.push(...page.content);
+      if (page.content.length < 100 || offset + 100 >= (page.totalFound ?? 0)) break;
+    }
+    return postings.map((j) => ({
       id: j.id, title: j.name, url: `https://jobs.smartrecruiters.com/${ats.board}/${j.id}`,
       location: [j.location?.city, j.location?.country, j.location?.remote ? "Remote" : ""].filter(Boolean).join(", "),
       description: null,
@@ -86,18 +97,24 @@ export async function listAtsJobs(ats: Ats): Promise<AtsJob[]> {
   const base = `https://${ats.host}/wday/cxs/${ats.board}/${ats.site}`;
   const seen = new Map<string, AtsJob>();
   for (const searchText of WORKDAY_SEARCHES) {
-    const body = JSON.parse(
-      await fetchText(`${base}/jobs`, { method: "POST", headers: { "content-type": "application/json", accept: "application/json" }, body: JSON.stringify({ appliedFacets: {}, limit: 20, offset: 0, searchText }) }),
-    ) as { jobPostings?: { title: string; externalPath: string; locationsText?: string }[] };
-    for (const j of body.jobPostings ?? []) {
-      if (seen.has(j.externalPath)) continue;
-      seen.set(j.externalPath, {
-        id: j.externalPath, title: j.title, url: `https://${ats.host}/${ats.site}${j.externalPath}`, location: j.locationsText ?? "", description: null,
-        detail: async () => {
-          const d = await fetchJson<{ jobPostingInfo?: { jobDescription?: string; location?: string } }>(`${base}${j.externalPath}`);
-          return htmlToText(d.jobPostingInfo?.jobDescription ?? "");
-        },
-      });
+    // Workday pages 20 at a time and reports `total`; follow it up to WORKDAY_MAX_PER_SEARCH.
+    let total = Infinity;
+    for (let offset = 0; offset < Math.min(total, WORKDAY_MAX_PER_SEARCH); offset += 20) {
+      const body = JSON.parse(
+        await fetchText(`${base}/jobs`, { method: "POST", headers: { "content-type": "application/json", accept: "application/json" }, body: JSON.stringify({ appliedFacets: {}, limit: 20, offset, searchText }) }),
+      ) as { total?: number; jobPostings?: { title: string; externalPath: string; locationsText?: string }[] };
+      if (typeof body.total === "number") total = body.total;
+      if (!body.jobPostings?.length) break;
+      for (const j of body.jobPostings) {
+        if (seen.has(j.externalPath)) continue;
+        seen.set(j.externalPath, {
+          id: j.externalPath, title: j.title, url: `https://${ats.host}/${ats.site}${j.externalPath}`, location: j.locationsText ?? "", description: null,
+          detail: async () => {
+            const d = await fetchJson<{ jobPostingInfo?: { jobDescription?: string; location?: string } }>(`${base}${j.externalPath}`);
+            return htmlToText(d.jobPostingInfo?.jobDescription ?? "");
+          },
+        });
+      }
     }
   }
   return [...seen.values()];

@@ -61,10 +61,10 @@ export async function claim(): Promise<Task | null> {
 // Finished: either done for good, or scheduled again (recurring pages such as search results).
 export async function complete(taskId: number, recrawlAfterSeconds?: number): Promise<void> {
   if (recrawlAfterSeconds === undefined) {
-    await pool.query("UPDATE crawl_queue SET locked_at = NULL, done_at = now(), last_error = NULL, last_run_at = now() WHERE id = $1", [taskId]);
+    await pool.query("UPDATE crawl_queue SET locked_at = NULL, interrupted = 0, done_at = now(), last_error = NULL, last_run_at = now() WHERE id = $1", [taskId]);
   } else {
     await pool.query(
-      `UPDATE crawl_queue SET locked_at = NULL, attempts = 0, last_error = NULL, last_run_at = now(),
+      `UPDATE crawl_queue SET locked_at = NULL, interrupted = 0, attempts = 0, last_error = NULL, last_run_at = now(),
               next_fetch_at = now() + make_interval(secs => $2) WHERE id = $1`,
       [taskId, recrawlAfterSeconds],
     );
@@ -83,18 +83,18 @@ const RECURRING = /-search$|^directory-|^career-page$|^career-discover$/;
 export async function fail(task: Task, error: string, maxAttempts = 5): Promise<"retry" | "dead"> {
   if (task.attempts >= maxAttempts && RECURRING.test(task.kind)) {
     await pool.query(
-      `UPDATE crawl_queue SET locked_at = NULL, attempts = 0, last_error = $2, last_run_at = now(),
+      `UPDATE crawl_queue SET locked_at = NULL, interrupted = 0, attempts = 0, last_error = $2, last_run_at = now(),
               next_fetch_at = now() + interval '6 hours' WHERE id = $1`,
       [task.id, error],
     );
     return "retry";
   }
   if (task.attempts >= maxAttempts) {
-    await pool.query("UPDATE crawl_queue SET locked_at = NULL, done_at = now(), last_error = $2, last_run_at = now() WHERE id = $1", [task.id, error]);
+    await pool.query("UPDATE crawl_queue SET locked_at = NULL, interrupted = 0, done_at = now(), last_error = $2, last_run_at = now() WHERE id = $1", [task.id, error]);
     return "dead";
   }
   await pool.query(
-    `UPDATE crawl_queue SET locked_at = NULL, last_error = $2, last_run_at = now(),
+    `UPDATE crawl_queue SET locked_at = NULL, interrupted = 0, last_error = $2, last_run_at = now(),
             next_fetch_at = now() + make_interval(secs => $3) WHERE id = $1`,
     [task.id, error, backoffSeconds(task.attempts)],
   );
@@ -124,7 +124,7 @@ export async function pauseHost(host: string, retryAfterSeconds: number | null):
 // A refusal is the host's state, not the task's fault: the task waits for the host without using up an attempt.
 export async function deferTask(task: Task, until: Date, error: string): Promise<void> {
   await pool.query(
-    `UPDATE crawl_queue SET locked_at = NULL, attempts = GREATEST(attempts - 1, 0), last_error = $2, last_run_at = now(),
+    `UPDATE crawl_queue SET locked_at = NULL, interrupted = 0, attempts = GREATEST(attempts - 1, 0), last_error = $2, last_run_at = now(),
             next_fetch_at = GREATEST(next_fetch_at, $3) WHERE id = $1`,
     [task.id, error, until],
   );
@@ -139,11 +139,25 @@ export async function clearRefusals(host: string): Promise<void> {
 }
 
 // Releases tasks claimed by a worker that crashed or was restarted mid-task. At crawler start every lock is
-// stale (one crawler process); while running, locks older than the stale limit are freed periodically.
+// stale (one crawler process, and a graceful stop lets in-flight tasks finish); while running, locks older
+// than the stale limit are freed periodically.
+//
+// Each release counts as an interruption. A task cut off QUARANTINE_AFTER times in a row is most likely what
+// kills the worker, so it rests a day instead of being claimed again on every restart (on 24 Oct 2026 a
+// 22.8 MB homepage crash-looped the crawler for 5.5 hours that way). Finishing in any way resets the count.
+export const QUARANTINE_AFTER = 3;
+
 export async function releaseStaleLocks(olderThanMinutes = config.staleLockMinutes): Promise<number> {
   const { rowCount } = await pool.query(
-    "UPDATE crawl_queue SET locked_at = NULL WHERE locked_at <= now() - make_interval(mins => $1) AND done_at IS NULL",
-    [olderThanMinutes],
+    `UPDATE crawl_queue
+        SET locked_at = NULL,
+            interrupted = interrupted + 1,
+            next_fetch_at = CASE WHEN interrupted + 1 >= $2 THEN now() + interval '1 day' ELSE next_fetch_at END,
+            last_error = CASE WHEN interrupted + 1 >= $2
+                              THEN 'quarantined for a day: cut off mid-run ' || (interrupted + 1) || ' times in a row'
+                              ELSE last_error END
+      WHERE locked_at <= now() - make_interval(mins => $1) AND done_at IS NULL`,
+    [olderThanMinutes, QUARANTINE_AFTER],
   );
   return rowCount ?? 0;
 }

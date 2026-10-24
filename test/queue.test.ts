@@ -6,7 +6,7 @@ process.env.DATABASE_URL = testUrl ?? "postgres://unused";
 
 const { pool } = await import("../src/db.js");
 const { migrate } = await import("../src/migrate.js");
-const { backoffSeconds, claim, complete, enqueue, fail, blockHost, pauseHost, clearRefusals, deferTask } = await import("../src/queue.js");
+const { backoffSeconds, claim, complete, enqueue, fail, blockHost, pauseHost, clearRefusals, deferTask, releaseStaleLocks, QUARANTINE_AFTER } = await import("../src/queue.js");
 
 describe("backoffSeconds", () => {
   it("doubles from one minute and caps at six hours", () => {
@@ -101,5 +101,35 @@ describe.skipIf(!testUrl)("crawl queue", () => {
     await enqueue("noop", "https://a.example/1");
     const { rows } = await pool.query("SELECT done_at FROM crawl_queue");
     expect(rows[0].done_at).toBeNull();
+  });
+
+  // Simulates a worker that dies with the task in hand: claim, then the next start releases every lock.
+  async function crashWith(url: string) {
+    await pool.query("UPDATE crawl_queue SET next_fetch_at = now() WHERE url = $1", [url]);
+    await pool.query("UPDATE hosts SET next_allowed_at = now()"); // skip the per-host pacing between restarts
+    const task = await claim();
+    expect(task?.url).toBe(url);
+    await releaseStaleLocks(0);
+  }
+
+  it("quarantines a task that keeps killing the worker", async () => {
+    await enqueue("career-discover", "https://huge.example/");
+    for (let i = 0; i < QUARANTINE_AFTER; i++) await crashWith("https://huge.example/");
+    const { rows } = await pool.query(
+      "SELECT interrupted, locked_at, next_fetch_at > now() + interval '23 hours' AS resting, last_error FROM crawl_queue");
+    expect(rows[0]).toMatchObject({ interrupted: QUARANTINE_AFTER, locked_at: null, resting: true });
+    expect(rows[0].last_error).toMatch(/^quarantined/);
+    expect(await claim()).toBeNull();
+  });
+
+  it("does not quarantine a task that was only caught in a crash and then finished", async () => {
+    await enqueue("noop", "https://ok.example/1");
+    await crashWith("https://ok.example/1");
+    await crashWith("https://ok.example/1");
+    await pool.query("UPDATE crawl_queue SET next_fetch_at = now()");
+    await pool.query("UPDATE hosts SET next_allowed_at = now()");
+    await complete((await claim())!.id, 60);
+    const { rows } = await pool.query("SELECT interrupted, last_error FROM crawl_queue");
+    expect(rows[0]).toEqual({ interrupted: 0, last_error: null });
   });
 });
