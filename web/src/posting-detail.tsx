@@ -5,12 +5,14 @@ import { css } from "./css";
 import { Icon } from "./icons";
 import { kbd } from "./shell";
 import type { App } from "./app";
-import { api, type PostingView } from "./api";
+import { api, type DescriptionView, type PostingView } from "./api";
+import { VietnameseSection } from "./vietnamese";
 import { ENGLISH_LABEL, LEVEL_LABEL, MODE_LABEL, breakdown, dayMonth, postedIso, salaryText, scoreColor, sourceText, tile, initial, isOpen } from "./model";
 
-const descriptionCache = new Map<number, { description: string; terms: string[] }>();
+const descriptionCache = new Map<number, DescriptionView>();
 
-export function useDescription(id: number) {
+// The posting's text and its Vietnamese; `update` stores a fresh copy after a translation.
+export function useDescription(id: number): [DescriptionView | null, (d: DescriptionView) => void] {
   const [d, setD] = useState(descriptionCache.get(id) ?? null);
   useEffect(() => {
     let live = true;
@@ -25,7 +27,11 @@ export function useDescription(id: number) {
       live = false;
     };
   }, [id]);
-  return d;
+  const update = (next: DescriptionView) => {
+    descriptionCache.set(id, next);
+    setD(next);
+  };
+  return [d, update];
 }
 
 export type Fact = { i: string; t: string; s?: string; w: number };
@@ -83,7 +89,7 @@ function ActionButtons({ app, p }: { app: App; p: PostingView }) {
 }
 
 export function PostingDetail({ app, p, wide }: { app: App; p: PostingView; wide: boolean }) {
-  const desc = useDescription(p.id);
+  const [desc, setDesc] = useDescription(p.id);
   const prefs = app.prefs!;
   const t = tile(p.companyKey);
   const fs = facts(p);
@@ -212,6 +218,8 @@ export function PostingDetail({ app, p, wide }: { app: App; p: PostingView; wide
               </div>
             </div>
           </section>
+
+          {desc && <VietnameseSection id={p.id} desc={desc} onUpdate={setDesc} />}
 
           <section>
             <h3 style={css("margin:0;font-size:14px;font-weight:600")}>Original description</h3>

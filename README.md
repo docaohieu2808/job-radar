@@ -31,6 +31,8 @@ Self-hosted on one ARM node (Oracle Cloud, 4 OCPU / 24 GB) with Docker Compose. 
 - **Extraction and scoring:** salary, level and years, work mode, stack, English requirement, certification
   sponsorship and onsite-abroad offers are read with rules; every point of the 0–100 match carries its reason.
   The owner tunes category weights on the Settings screen and every stored posting is rescored.
+- **Vietnamese for English postings:** a summary (what the job is, main requirements, benefits, catches) made by
+  Gemini when an English posting reaches the Inbox, and a full translation on request; both stored once.
 - **Web inbox:** triage with Interested / Skip / Applied (keyboard `j k i s a o`, ⌘K, Undo), a drag-and-drop
   pipeline, filters, company pages, an overview of the market, and a health screen for every source.
 

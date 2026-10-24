@@ -5,7 +5,12 @@ import { config } from "./config.js";
 
 export const LLM_DAILY_LIMIT = 200;
 // Link discovery has its own budget so judging new sites never starves reading career pages, and vice versa.
-const BUDGETS = { pages: { prefix: "llm-calls", limit: LLM_DAILY_LIMIT }, discovery: { prefix: "llm-discovery", limit: 300 } } as const;
+// Translation for the owner has its own budget too.
+const BUDGETS = {
+  pages: { prefix: "llm-calls", limit: LLM_DAILY_LIMIT },
+  discovery: { prefix: "llm-discovery", limit: 300 },
+  translate: { prefix: "llm-translate", limit: 400 },
+} as const;
 export type Budget = keyof typeof BUDGETS;
 
 export function llmEnabled(): boolean {

@@ -3,7 +3,8 @@ import type { StateView } from "../../src/api/view-types";
 import type { Prefs } from "../../src/prefs";
 
 export type { StateView };
-export type { PostingView, CompanyView, SourceHealth, Usage } from "../../src/api/view-types";
+export type { PostingView, CompanyView, SourceHealth, Usage, DescriptionView } from "../../src/api/view-types";
+import type { DescriptionView } from "../../src/api/view-types";
 
 async function call<T>(method: string, url: string, body?: unknown): Promise<T> {
   const res = await fetch(url, {
@@ -17,7 +18,8 @@ async function call<T>(method: string, url: string, body?: unknown): Promise<T> 
 
 export const api = {
   state: () => call<StateView>("GET", "/api/state"),
-  description: (id: number) => call<{ description: string; terms: string[] }>("GET", `/api/jobs/${id}/description`),
+  description: (id: number) => call<DescriptionView>("GET", `/api/jobs/${id}/description`),
+  translate: (id: number, full: boolean) => call<DescriptionView>("POST", `/api/jobs/${id}/translate${full ? "?full=1" : ""}`),
   setStatus: (id: number, status: string, note?: string | null) => call("POST", `/api/jobs/${id}/status`, { status, note }),
   watch: (name: string, watch: boolean) => call("POST", "/api/companies/watch", { name, watch }),
   website: (name: string, website: string) => call("POST", "/api/companies/website", { name, website }),

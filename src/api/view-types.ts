@@ -75,6 +75,12 @@ export type CompanyView = {
   siteMatchReasons: string[];
 };
 
+// The open posting's text, with its Vietnamese summary and full translation when they exist.
+export type DescriptionView = {
+  description: string; terms: string[]; english: boolean;
+  viSummary: { summary: string; requirements: string[]; benefits: string[]; notes: string[] } | null; viFull: string | null;
+};
+
 // What the score has learned from the owner's triage so far.
 export type LearningView = { labels: number; liked: number; skipped: number; needed: number; active: boolean; top: { label: string; points: number }[] };
 

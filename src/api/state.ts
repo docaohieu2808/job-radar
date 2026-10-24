@@ -2,12 +2,13 @@
 // The owner has a few hundred postings at most, so one payload is simpler than paging.
 import { active, loadLearned, MIN_LABELS } from "../learn.js";
 import { pool } from "../db.js";
+import { needsSummary, type ViSummary } from "../translate.js";
 import { OWNER_STACK } from "../extract.js";
 import { loadPrefs } from "../settings.js";
 import { normalizeKey } from "../store.js";
 import type { Reason } from "../score-weights.js";
 import { sourceHealth } from "./sources-health.js";
-import type { CompanyView, PostingView, StateView } from "./view-types.js";
+import type { CompanyView, DescriptionView, PostingView, StateView } from "./view-types.js";
 
 export type { CompanyView, PostingView, StateView };
 
@@ -118,11 +119,16 @@ export async function loadState(): Promise<StateView> {
 }
 
 // The parts of a posting only the detail pane needs.
-export async function loadDescription(id: number): Promise<{ description: string; terms: string[] } | null> {
-  const { rows } = await pool.query<{ description: string | null; stack: string[] }>("SELECT description, stack FROM jobs WHERE id = $1", [id]);
+export async function loadDescription(id: number): Promise<DescriptionView | null> {
+  const { rows } = await pool.query<{ description: string | null; stack: string[]; vi_summary: ViSummary | null; vi_full: string | null }>(
+    "SELECT description, stack, vi_summary, vi_full FROM jobs WHERE id = $1", [id],
+  );
   if (!rows[0]) return null;
   const description = rows[0].description ?? "";
-  return { description, terms: matchedTerms(description, rows[0].stack) };
+  return {
+    description, terms: matchedTerms(description, rows[0].stack),
+    viSummary: rows[0].vi_summary, viFull: rows[0].vi_full, english: needsSummary(description),
+  };
 }
 
 // The exact words in the text that named each detected skill, so the screen can emphasise them.

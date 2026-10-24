@@ -6,6 +6,7 @@ import { adoptName, ensureCompany, websiteFromEmails } from "./companies.js";
 import { normalizeUrl } from "./sources/career.js";
 import { loadPrefs } from "./settings.js";
 import { addCandidate } from "./sources/discovery.js";
+import { queueInboxSummaries } from "./translate.js";
 import { addCareerPage } from "./sources/career.js";
 import { detectAts } from "./sources/ats.js";
 
@@ -94,6 +95,10 @@ try {
     );
     for (const r of rows) await adoptName(Number(r.id), r.name);
     console.log(`merged or renamed ${rows.length} companies`);
+  }
+  else if (command === "summarize-inbox") {
+    // Queues Vietnamese summaries for the English postings already in the Inbox.
+    console.log(`queued ${await queueInboxSummaries((await loadPrefs()).inboxMin)} summaries`);
   }
   else if (command === "matches") {
     // The Inbox as plain text, for answering "any good jobs today?" from a terminal or a chat session:

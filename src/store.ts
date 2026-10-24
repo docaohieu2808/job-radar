@@ -8,6 +8,7 @@ import type { Prefs } from "./prefs.js";
 import { scorePosting } from "./score.js";
 import { factsFeatures, learnedReasons, loadLearned } from "./learn.js";
 import { trustReasons } from "./trust.js";
+import { needsSummary, queueSummary } from "./translate.js";
 import { loadPrefs } from "./settings.js";
 import { normalizeKey } from "./normalize-key.js";
 import { ensureCompany, websiteFromEmails } from "./companies.js";
@@ -89,7 +90,7 @@ export async function savePosting(p: Posting): Promise<SaveResult> {
     key, p.postedAt ?? null,
   ];
 
-  return withTransaction(async (client) => {
+  const result = await withTransaction(async (client) => {
     const bySource = await client.query<{ job_id: number; content_hash: string; closed_at: Date | null }>(
       `SELECT s.job_id, j.content_hash, j.closed_at FROM job_sources s JOIN jobs j ON j.id = s.job_id
         WHERE s.source = $1 AND s.external_id = $2 FOR UPDATE OF s`,
@@ -152,6 +153,11 @@ export async function savePosting(p: Posting): Promise<SaveResult> {
     );
     return { status, jobId, score };
   });
+  // English postings that reach the Inbox get a Vietnamese summary in the background (src/translate.ts).
+  if (result.jobId && (result.status === "new" || result.status === "reposted") && score >= prefs.inboxMin && needsSummary(p.description)) {
+    await queueSummary(result.jobId);
+  }
+  return result;
 }
 
 // Search results that list postings we already have: refresh last_seen without fetching the posting again.

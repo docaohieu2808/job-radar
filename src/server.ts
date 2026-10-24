@@ -7,6 +7,7 @@ import { loadDescription, loadState } from "./api/state.js";
 import { tryNow } from "./api/sources-health.js";
 import { BadRequest, NotFound, setStatus, setWatch, setWebsite, updatePrefs } from "./api/actions.js";
 import { relearn } from "./learn.js";
+import { summarize, translateFull } from "./translate.js";
 import { rescoreAll } from "./store.js";
 
 // A burst of triage clicks refits the model once, a few seconds after the last one, then rescores the postings.
@@ -55,6 +56,13 @@ async function api(req: IncomingMessage, res: ServerResponse, url: URL): Promise
   if (method === "GET" && parts[1] === "jobs" && parts[3] === "description") {
     const d = await loadDescription(Number(parts[2]));
     return d ? send(res, 200, d) : send(res, 404, { error: "not found" });
+  }
+  // Vietnamese on request: the summary now if it is not ready, or the full translation (?full=1).
+  if (method === "POST" && parts[1] === "jobs" && parts[3] === "translate") {
+    const id = Number(parts[2]);
+    const ok = url.searchParams.get("full") ? await translateFull(id) : await summarize(id);
+    if (!ok) return send(res, 503, { error: "translation unavailable right now" });
+    return send(res, 200, await loadDescription(id));
   }
   if (method === "POST" && parts[1] === "jobs" && parts[3] === "status") {
     const body = await readBody(req);

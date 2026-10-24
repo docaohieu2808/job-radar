@@ -7,6 +7,7 @@ import type { PostingView } from "./api";
 import { ageText, chips, place, postedIso, salaryText, scoreColor, sourceText, stage, tile, initial } from "./model";
 import { inboxSubtitle, SortSwitch } from "./inbox";
 import { benefits, facts, segments, useDescription } from "./posting-detail";
+import { VietnameseSection } from "./vietnamese";
 import { PipelineCard, Switch } from "./pipeline";
 import { SettingsBody } from "./settings";
 import { passes } from "./postings";
@@ -121,7 +122,7 @@ function PhonePostings({ app }: { app: App }) {
 }
 
 function PhonePosting({ app, p }: { app: App; p: PostingView }) {
-  const desc = useDescription(p.id);
+  const [desc, setDesc] = useDescription(p.id);
   const t = tile(p.companyKey);
   const back = app.prev && app.prev.name !== "posting" ? app.prev : { name: "inbox" as const };
   const backHref = back.name === "company" ? `#/companies/${encodeURIComponent(back.key)}` : back.name === "settings" ? "#/settings" : `#/${back.name}`;
@@ -176,6 +177,7 @@ function PhonePosting({ app, p }: { app: App; p: PostingView }) {
               <div style={css("margin-top:8px;display:flex;gap:8px;flex-wrap:wrap")}>{p.gap.map((c) => <span key={c} style={css("height:28px;padding:0 10px;border-radius:6px;background:var(--warn-bg);color:var(--warn);font-size:13px;display:inline-flex;align-items:center")}>{c}</span>)}</div>
             </>
           )}
+          {desc && <div style={css("margin-top:24px")}><VietnameseSection id={p.id} desc={desc} onUpdate={setDesc} /></div>}
           {desc && (
             <>
               <div style={css("margin-top:24px;font-size:14px;font-weight:600")}>Original description</div>
