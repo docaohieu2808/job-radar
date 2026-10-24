@@ -44,7 +44,7 @@ The design follows the web crawler chapter of *System Design Interview* (Alex Xu
 |---|---|
 | Seed URLs | Job-board searches, the TopDev directory, and the company registry |
 | URL frontier, politeness | `crawl_queue` in Postgres, claimed with `SELECT … FOR UPDATE SKIP LOCKED` together with the host row; each host has its own interval and pause |
-| HTML downloader, robots.txt | Node `fetch`; robots.txt cached per host for a week and honoured on company sites |
+| HTML downloader, robots.txt | Node `fetch` with a 5 MB body cap; robots.txt cached per host for a week and honoured on company sites (an unreachable robots.txt closes the site for an hour) |
 | Content parser | One adapter per source; ATS JSON APIs; job links on self-built pages; a capped LLM fallback (Gemini through 9Router) only when postings are listed without links |
 | Content seen? | SHA-256 of the main text of a page: unchanged pages are not parsed again and wait twice as long (1 day up to 7 days) |
 | URL seen? | `(source, external_id)` of stored postings plus `rejected_postings`, so search pages do not send the crawler back to what was already read |
@@ -71,7 +71,18 @@ Operator commands: `docker compose exec crawler node dist/src/cli.js rescore | s
 
 ## Operations
 
-- Health: `GET /health` answers 503 when no task has finished for six hours; the fleet status page probes it.
-- Logs: container stdout, collected by Promtail into Loki.
-- Backup: `pg_dump` in the node's nightly Kopia backup.
-- Design source: `design/source/` (Claude Design export). Decisions and their reasons: `docs/design-decisions.md`.
+- **Deploy:** through the Fleet Pulse canary controller (`fleet-pulse-deploy job-radar` on the node): the new web
+  version takes 10% of requests for 10 minutes and is compared with the running one (5xx/timeouts and p95), then
+  promoted with no downtime or rolled back automatically. A release that adds a migration is refused by the
+  canary (both versions share the database); additive migrations go out with `--skip-canary`.
+- **Health and SLO:** `GET /health` answers 503 when no task has finished for six hours. Fleet Pulse probes it every
+  minute and holds Job Radar to a 99.5% availability SLO over 30 days.
+- **Failure containment:**
+  - Response bodies over 5 MB are refused while streaming, before they are buffered (robots.txt included).
+  - A task cut off mid-run three times in a row, by a worker crash or a hang, is quarantined for a day instead of
+    being picked up on every restart. Both came out of a real incident on 24 Oct 2026: a 22.8 MB company homepage
+    ran the crawler out of heap and crash-looped it for 5.5 hours.
+  - A crash loop now pages within minutes (`ContainerCrashLooping` in the fleet alert rules).
+- **Logs:** container stdout, collected by Promtail into Loki.
+- **Backup:** `pg_dump` in the node's nightly Kopia backup, plus a dump before every data change or migration.
+- **Design source:** `design/source/` (Claude Design export). Decisions and their reasons: `docs/design-decisions.md`.
