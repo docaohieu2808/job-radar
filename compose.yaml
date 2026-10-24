@@ -27,8 +27,9 @@ services:
     env_file: .env
     environment:
       # Most tasks wait on other sites, not on CPU; eight at a time by default. Override for a one-off backlog run:
-      # WORKER_CONCURRENCY=16 docker compose up -d crawler (tools/backlog-boost.sh does this and reverts).
-      WORKER_CONCURRENCY: "${WORKER_CONCURRENCY:-8}"
+      # CRAWLER_CONCURRENCY=16 docker compose up -d crawler (tools/backlog-boost.sh does this and reverts).
+      # A separate name, so a WORKER_CONCURRENCY line left in .env cannot override it.
+      WORKER_CONCURRENCY: "${CRAWLER_CONCURRENCY:-8}"
     depends_on:
       db: { condition: service_healthy }
     networks: [internal, traefik-network]

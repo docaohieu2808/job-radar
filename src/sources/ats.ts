@@ -55,7 +55,8 @@ export async function listAtsJobs(ats: Ats): Promise<AtsJob[]> {
       const location = [...new Set(places)].join("; ");
       return {
         id: j.id, title: j.title, url: j.jobUrl, description: j.descriptionPlain ?? "",
-        location: j.isRemote && !/remote/i.test(location) ? `Remote (${location || "anywhere"})` : location,
+        // Ashby marks remote roles and gives the country or city they are tied to; that place is kept in the text.
+        location: j.isRemote && !/remote/i.test(location) ? (location ? `Remote (${location})` : "Remote") : location,
       };
     });
   }

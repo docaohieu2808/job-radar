@@ -252,13 +252,25 @@ const ABROAD = /\b(japan|tokyo|osaka|singapore|thailand|bangkok|malaysia|kuala l
 // HCMC or remote. Remote work for a company abroad is welcome; going to an office abroad or in another
 // Vietnamese city is not. `other` is the title and address, where career sites often put the city.
 // Regions a remote posting may be limited to that leave Vietnam out ("Remote - US", "Europe only", "CET +/- 3 h").
-// Asian countries are listed too: "Remote (India)" means India only, while a list that includes Vietnam passes first.
-const REMOTE_ELSEWHERE = /\b(us|u\.s\.|usa|united states|americas?|north america|canada|uk|united kingdom|europe|european|eu|emea|latam|latin america|brazil|brasil|mexico|colombia|argentina|chile|peru|germany|deutschland|france|spain|portugal|poland|romania|netherlands|ireland|switzerland|austria|italy|sweden|denmark|norway|finland|czech|hungary|ukraine|turkey|israel|south africa|nigeria|kenya|egypt|india|pakistan|bangladesh|philippines|indonesia|malaysia|singapore|thailand|japan|korea|china|taiwan|hong kong|australia|new zealand|san francisco|new york|seattle|austin|boston|chicago|los angeles|denver|toronto|vancouver|london|berlin|munich|amsterdam|paris|madrid|lisbon|warsaw|dublin|bangalore|bengaluru|manila|jakarta|sydney|melbourne|cet|cest|est|pst|cst|gmt[-−]\d|utc[-−]\d)\b/i;
-const REMOTE_OPEN = /worldwide|anywhere|global|everywhere|vietnam|việt nam|\bapac\b|asia|gmt\s*\+\s*[5-9]|utc\s*\+\s*[5-9]|\bict\b|ho chi minh|hcm/i;
+// Regions that include someone working from Vietnam. "Remote (Milan)", "Panama - Remote" or "Remote, US" name a
+// country of residence elsewhere and are not open; a bare "Remote" names nothing and is judged on its text.
+// Places in Vietnam count too: a Vietnamese company's remote role is listed under its office city.
+const REMOTE_OPEN = /worldwide|anywhere|global|everywhere|vietnam|việt nam|viet nam|\bapac\b|asia|gmt\s*\+\s*[5-9]|utc\s*\+\s*[5-9]|\bict\b|ho chi minh|hồ chí minh|\bhcm|sài gòn|saigon|hà nội|ha noi|hanoi|đà nẵng|da nang|cần thơ|hải phòng/i;
 
-// A remote posting is open from here unless its stated region names only places elsewhere.
 export function remoteOpenToVietnam(region: string): boolean {
-  return !region.trim() || REMOTE_OPEN.test(region) || !REMOTE_ELSEWHERE.test(region);
+  return !region.trim() || REMOTE_OPEN.test(region);
+}
+
+// A role whose location is only "Remote" is kept when its text opens it to the world or this region; on company
+// boards abroad "Remote" alone usually means remote within the company's own country.
+const OPEN_WIDELY = /work from anywhere|from anywhere|anywhere in the world|worldwide|fully distributed|globally distributed|any (time ?zone|country|location)|\bapac\b|asia[- ]pacific|southeast asia|vietnam|gmt\s*\+\s*7|utc\s*\+\s*7/i;
+
+export function bareRemote(location: string): boolean {
+  return location.replace(/[()\s\-–,]/g, "").toLowerCase() === "remote";
+}
+
+export function openWidely(description: string): boolean {
+  return OPEN_WIDELY.test(description);
 }
 
 export function isWantedLocation(location: string, workMode: WorkMode, other = ""): boolean {

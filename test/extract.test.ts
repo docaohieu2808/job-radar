@@ -105,6 +105,8 @@ describe("scoring traps from real postings", () => {
   it("keeps remote work open to Vietnam and drops remote limited to elsewhere", () => {
     expect(isWantedLocation("Remote (worldwide)", "remote")).toBe(true);
     expect(isWantedLocation("Europe, LATAM, APAC, the U.S., Canada", "remote")).toBe(true);
+    expect(isWantedLocation("Remote (Milan)", "remote")).toBe(false);
+    expect(isWantedLocation("Panama - Remote", "remote")).toBe(false);
     expect(isWantedLocation("Remote - United States", "remote")).toBe(false);
     expect(isWantedLocation("Time zone: CET (+/- 3 hours)", "remote")).toBe(false);
     expect(isWantedLocation("Vietnam", "remote")).toBe(true);

@@ -15,9 +15,10 @@ import { askJson } from "../llm.js";
 import { HostRefusedError } from "../handlers/index.js";
 import { detectAts, listAtsJobs, type Ats } from "./ats.js";
 import { noteOutboundLinks } from "./discovery.js";
+import { adoptName } from "../companies.js";
 import { readInterval } from "../relevance.js";
 import { postingConfidence, siteMatch } from "../trust.js";
-import { remoteOpenToVietnam } from "../extract.js";
+import { bareRemote, openWidely, remoteOpenToVietnam } from "../extract.js";
 import { HOUR, type Source } from "./types.js";
 import type { Task } from "../queue.js";
 import type { HandlerResult } from "../handlers/index.js";
@@ -128,11 +129,12 @@ export function wantedCareerLocation(location: string): boolean {
   if (!location.trim()) return true;
   if (/viet ?nam|việt nam|ho chi minh|hồ chí minh|hcm|saigon|sài gòn/i.test(location)) return true;
   if (!/remote/i.test(location)) return false;
-  return location.split(/;|\|/).some((part) => /remote/i.test(part) && remoteOpenToVietnam(part.replace(/remote/gi, "")));
+  return location.split(/;|\|/).some((part) => /remote/i.test(part) && remoteOpenToVietnam(part.replace(/remote|[-–(),:]/gi, " ")));
 }
 
+
 // A plain "Remote" role whose text limits it to one country or region elsewhere.
-const ELSEWHERE_ONLY = /(must|need to|required to) (be )?(located|based|reside|live|work) (in|from) (the )?(us|u\.s\.|united states|usa|canada|uk|united kingdom|europe|eu|emea|latam|india)\b|\b(us|u\.s\.|usa|uk|eu)[- ]based (candidates|applicants|only)|\b(us|usa|u\.s\.|uk|eu|europe) only\b|(eligible|authori[sz]ed|legally able) to work in the (us|u\.s\.|united states|uk|united kingdom|eu)\b/i;
+const ELSEWHERE_ONLY = /\b(u\.?s\.? citizen(ship)?|security clearance|clearance (is )?required|green card|work permit for the (us|uk|eu))\b|(must|need to|required to) (be )?(located|based|reside|live|work) (in|from) (the )?(us|u\.s\.|united states|usa|canada|uk|united kingdom|europe|eu|emea|latam|india)\b|\b(us|u\.s\.|usa|uk|eu)[- ]based (candidates|applicants|only)|\b(us|usa|u\.s\.|uk|eu|europe) only\b|(eligible|authori[sz]ed|legally able) to work in the (us|u\.s\.|united states|uk|united kingdom|eu)\b/i;
 
 export function remoteElsewhereOnly(description: string): boolean {
   return ELSEWHERE_ONLY.test(description);
@@ -219,7 +221,8 @@ async function readAts(c: { id: number; name: string }, ats: Ats): Promise<{ fet
   const all = await listAtsJobs(ats);
   // A company first known only by its board slug ("whalarinc") takes the name the ATS gives ("Whalar").
   const stated = all.find((j) => j.company)?.company?.trim();
-  if (stated) await pool.query("UPDATE companies SET name = $2 WHERE id = $1 AND discovered_via = 'ats' AND name <> $2", [c.id, stated]);
+  const { rows: via } = await pool.query<{ discovered_via: string }>("SELECT discovered_via FROM companies WHERE id = $1", [c.id]);
+  if (stated && via[0]?.discovered_via === "ats" && stated !== c.name) await adoptName(c.id, stated);
   const companyName = stated || c.name;
   const jobs = all.filter((j) => isRelevantTitle(j.title, prefs.keywords) && wantedCareerLocation(j.location));
   const ids = jobs.map((j) => `${ats.kind}:${ats.board}:${j.id}`);
@@ -234,6 +237,8 @@ async function readAts(c: { id: number; name: string }, ats: Ats): Promise<{ fet
       fetched++;
     }
     if (/remote/i.test(j.location) && description && remoteElsewhereOnly(description)) continue;
+    // "Remote" alone usually means remote within the company's own country; keep it only when the text says otherwise.
+    if (bareRemote(j.location) && !/viet ?nam|ho chi minh|hcm/i.test(j.location) && !(description && openWidely(description))) continue;
     await saveCareerPosting(companyName, { id, url: j.url, title: j.title, location: j.location, description: description ?? j.title });
   }
   return { fetched, found: jobs.length };

@@ -3,7 +3,7 @@
 // Content Seen? = hash of the normalized description; an unchanged posting is only touched, not re-extracted.
 import { createHash } from "node:crypto";
 import { pool, withTransaction } from "./db.js";
-import { extractFacts, isRelevantTitle, isWantedLocation, type WorkMode } from "./extract.js";
+import { bareRemote, extractFacts, isRelevantTitle, isWantedLocation, openWidely, type WorkMode } from "./extract.js";
 import type { Prefs } from "./prefs.js";
 import { scorePosting } from "./score.js";
 import { factsFeatures, learnedReasons, loadLearned } from "./learn.js";
@@ -43,9 +43,11 @@ export function contentHash(text: string): string {
 }
 
 // Why a posting is not kept under the current preferences, or null when it is.
-function rejection(title: string, location: string, workMode: WorkMode, prefs: Prefs, url = ""): string | null {
+function rejection(title: string, location: string, workMode: WorkMode, prefs: Prefs, url = "", source = "", description = ""): string | null {
   if (!isRelevantTitle(title, prefs.keywords)) return "title";
   if (!isWantedLocation(location, workMode, `${title} ${url}`)) return "place";
+  // Company boards abroad: plain "Remote" counts only when the text opens the role widely.
+  if (source === "career" && bareRemote(location) && !openWidely(description)) return "place";
   if (workMode !== "unknown" && !prefs.modes[workMode]) return "work mode";
   return null;
 }
@@ -59,9 +61,11 @@ async function reject(source: string, externalId: string, reason: string): Promi
 }
 
 export async function savePosting(p: Posting): Promise<SaveResult> {
+  // Some pages carry NUL characters, which Postgres text columns reject.
+  p = { ...p, title: p.title.replace(/\u0000/g, ""), description: p.description.replace(/\u0000/g, "") };
   const prefs = await loadPrefs();
   const facts = extractFacts({ title: p.title, text: p.description, tags: p.tags, salaryText: p.salaryText, location: p.location });
-  const rejected = rejection(p.title, p.location, facts.workMode, prefs, p.url);
+  const rejected = rejection(p.title, p.location, facts.workMode, prefs, p.url, p.source, p.description);
   if (rejected) {
     await reject(p.source, p.externalId, rejected);
     return { status: "skipped" };
@@ -200,7 +204,7 @@ export async function rescoreAll(): Promise<number> {
     const facts = extractFacts({ title: r.title, text: r.description, tags: r.stack, location: r.location });
     // Untriaged postings that the current keywords, places or work modes would not keep are removed;
     // anything the owner already acted on stays.
-    const rejected = rejection(r.title, r.location, facts.workMode, prefs, r.urls);
+    const rejected = rejection(r.title, r.location, facts.workMode, prefs, r.urls, r.source ?? "", r.description);
     if (rejected) {
       const { rows: gone } = await pool.query<{ source: string; external_id: string }>(
         `WITH del AS (DELETE FROM jobs j USING applications a WHERE a.job_id = j.id AND j.id = $1 AND a.status = 'new' RETURNING j.id)

@@ -56,6 +56,14 @@ describe("remote boards", () => {
     expect(isWantedLocation(usa.location, "remote")).toBe(false);
   });
 
+  it("keeps a bare Remote role only when its text opens it widely", async () => {
+    const { bareRemote, openWidely } = await import("../src/extract.js");
+    expect(bareRemote("Remote")).toBe(true);
+    expect(bareRemote("Remote (Milan)")).toBe(false);
+    expect(openWidely("We are fully distributed and hire from anywhere in the world.")).toBe(true);
+    expect(openWidely("Our team works from our Austin office and remotely.")).toBe(false);
+  });
+
   it("drops a Working Nomads role limited to a European time zone", () => {
     const p = nomadsPosting({ url: "https://www.workingnomads.com/job/go/1/", title: "Senior DevOps Engineer (Azure)", description: "<p>Azure</p>",
       company_name: "Acme", category_name: "Administration", tags: "devops,azure", location: "Time zone: CET (+/- 3 hours)", pub_date: "2026-10-22T10:00:00" });

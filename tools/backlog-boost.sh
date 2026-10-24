@@ -5,7 +5,7 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 max_hours=${1:-6}
-WORKER_CONCURRENCY=16 docker compose up -d crawler
+CRAWLER_CONCURRENCY=16 docker compose up -d crawler
 docker update --cpus 3 --memory 3g --memory-swap 3g job-radar-crawler-1
 echo "boosted: 3 CPU, 3 GB, 16 tasks; reverting when the backlog clears or after ${max_hours} h"
 deadline=$(( $(date +%s) + max_hours * 3600 ))

@@ -114,10 +114,13 @@ describe("career pages", () => {
     expect(wantedCareerLocation("Remote - European Union")).toBe(false);
     expect(wantedCareerLocation("Remote Canada; Remote US")).toBe(false);
     expect(wantedCareerLocation("Remote US; Remote (anywhere)")).toBe(true);
+    expect(wantedCareerLocation("Remote (Barcelona)")).toBe(false);
+    expect(wantedCareerLocation(" -REMOTE, BULGARIA-")).toBe(false);
     expect(wantedCareerLocation("Berlin")).toBe(false);
     expect(remoteElsewhereOnly("Candidates must be located in the US.")).toBe(true);
     expect(remoteElsewhereOnly("You must be authorized to work in the United States.")).toBe(true);
     expect(remoteElsewhereOnly("We hire across Asia and Europe.")).toBe(false);
+    expect(remoteElsewhereOnly("Active DoD security clearance required.")).toBe(true);
   });
 
   it("tries the usual spellings of a site", async () => {

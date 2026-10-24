@@ -57,6 +57,29 @@ export function websiteFromText(text: string): string | null {
 
 type Client = pg.Pool | pg.PoolClient;
 
+// A company first filed under a board slug ("whalarinc") learns its real name ("Whalar"). If the registry already
+// has a company under that name, the board moves there and the slug entry goes; otherwise the entry is renamed.
+// Returns the id that now holds the board.
+export async function adoptName(companyId: number, name: string): Promise<number> {
+  const key = normalizeKey(name);
+  const { rows } = await pool.query<{ id: string }>("SELECT id FROM companies WHERE key = $1 AND id <> $2", [key, companyId]);
+  if (!rows[0]) {
+    await pool.query("UPDATE companies SET name = $2, key = $3 WHERE id = $1", [companyId, name, key]);
+    return companyId;
+  }
+  const target = Number(rows[0].id);
+  await pool.query("UPDATE career_pages SET company_id = $2 WHERE company_id = $1", [companyId, target]);
+  await pool.query("UPDATE jobs SET company_id = $2 WHERE company_id = $1", [companyId, target]);
+  await pool.query("UPDATE domain_candidates SET company_id = $2 WHERE company_id = $1", [companyId, target]);
+  await pool.query("UPDATE domain_candidates SET from_company = $2 WHERE from_company = $1", [companyId, target]);
+  await pool.query(
+    "UPDATE companies SET career_status = 'found', career_checked_at = now() WHERE id = $1 AND career_status <> 'found'",
+    [target],
+  );
+  await pool.query("DELETE FROM companies WHERE id = $1", [companyId]);
+  return target;
+}
+
 // Records the company (once) and its website when the new source is better than the stored one.
 // Returns the company id. A newly learned website queues a search for the career page.
 // `discoveredVia` is "posting" for companies seen in a posting and "directory" for the TopDev directory;

@@ -2,7 +2,7 @@
 import { pool } from "./db.js";
 import { enqueue } from "./queue.js";
 import { rescoreAll } from "./store.js";
-import { ensureCompany, websiteFromEmails } from "./companies.js";
+import { adoptName, ensureCompany, websiteFromEmails } from "./companies.js";
 import { normalizeUrl } from "./sources/career.js";
 import { loadPrefs } from "./settings.js";
 import { addCandidate } from "./sources/discovery.js";
@@ -82,6 +82,18 @@ try {
       added++;
     }
     console.log(`imported ${added} new boards from ${lines.length} lines`);
+  }
+  else if (command === "merge-ats-duplicates") {
+    // Companies filed under a board slug whose real name is already in the registry: fold them into that company.
+    const { rows } = await pool.query<{ id: string; name: string }>(
+      `SELECT c.id, d.name FROM companies c
+         JOIN LATERAL (SELECT j.company_name AS name FROM jobs j JOIN job_sources s ON s.job_id = j.id
+                        JOIN career_pages p ON p.company_id = c.id
+                       WHERE s.source = 'career' AND s.url LIKE '%' || split_part(p.url, '/', 4) || '%' LIMIT 1) d ON true
+        WHERE c.discovered_via = 'ats' AND d.name <> c.name`,
+    );
+    for (const r of rows) await adoptName(Number(r.id), r.name);
+    console.log(`merged or renamed ${rows.length} companies`);
   }
   else if (command === "matches") {
     // The Inbox as plain text, for answering "any good jobs today?" from a terminal or a chat session:
