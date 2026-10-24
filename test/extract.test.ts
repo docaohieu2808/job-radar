@@ -139,3 +139,10 @@ describe("scoring traps from real postings", () => {
     expect(scorePosting(facts).score).toBeLessThan(50);
   });
 });
+
+describe("tidyText", () => {
+  it("folds one-tag-per-line lists back into a sentence", async () => {
+    const { tidyText } = await import("../src/extract.js");
+    expect(tidyText("Yêu cầu kỹ thuật:\nDevOps\n,\nGCP\n,\nMS Azure\n-\nNext line")).toBe("Yêu cầu kỹ thuật: DevOps, GCP, MS Azure\nNext line");
+  });
+});

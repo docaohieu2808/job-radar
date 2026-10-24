@@ -76,6 +76,9 @@ const COMPANY = /công ty (tnhh|cổ phần|cp)|\bjsc\b|co\.,? ?ltd|\binc\b|\bll
 const SHOP = /giỏ hàng|thêm vào giỏ|add to cart|mua ngay|thanh toán khi nhận hàng|free shipping/i;
 const MEDIA_OR_SCHOOL = /báo điện tử|tạp chí|cơ quan (chủ quản|ngôn luận)|tòa soạn|trường (đại học|cao đẳng|thpt|mầm non|quốc tế)|học viện|university|tuyển sinh/i;
 const PARKED = /domain (is )?for sale|buy this domain|parked|tên miền (này )?đang được bán/i;
+// Job boards and recruitment services list other companies' openings; they are sources, not employers.
+const JOB_BOARD = /(việc làm|tuyển dụng|job ?board|jobs? (in|for)|recruitment (site|platform|service)|dịch vụ tuyển dụng|cổng (thông tin )?việc làm|headhunt)/i;
+const JOB_BOARD_DOMAIN = /(^|[.-])(it)?jobs?|vieclam|tuyendung|career|timviec|headhunt|recruit/i;
 
 export type CandidateScore = { score: number; core: number; reasons: string[]; name: string; careerLink: boolean };
 
@@ -121,11 +124,16 @@ export function scoreCandidate(html: string, domain: string): CandidateScore {
     score -= 30;
     reasons.push("news site or school");
   }
+  // The site's own name or address says it is a job board ("ITJobs.com.vn: Dịch vụ tuyển dụng dành cho dân IT").
+  if (JOB_BOARD.test(`${meta[0] ?? ""} ${meta[1] ?? ""}`) && (JOB_BOARD_DOMAIN.test(domain) || /việc làm|tuyển dụng/i.test(meta[0] ?? ""))) {
+    score = 0;
+    reasons.push("job board");
+  }
   if (PARKED.test(all) || text.length < 200) {
     score -= 50;
     reasons.push(text.length < 200 ? "almost empty page" : "parked domain");
   }
-  if (!core) score = Math.min(score, REJECT_AT);
+  if (!core || reasons.includes("job board")) score = Math.min(score, REJECT_AT);
   return { score: Math.max(0, Math.min(100, score)), core, reasons, name: siteName(html, domain), careerLink };
 }
 
@@ -174,6 +182,7 @@ async function checkCandidate(domain: string): Promise<"done" | "later"> {
         '{"it_company":boolean,"hires_engineers":boolean,"vietnam_or_remote":boolean,"name":string}. ' +
         "it_company: the company's main business is software, IT services, cloud or infrastructure, or a technology product it builds. " +
         "Marketing, SEO, advertising and media agencies, web-design shops for small businesses, clinics, retailers, schools, news sites, " +
+        "job boards, recruitment and headhunting services (they list other companies' jobs), " +
         "and a page that is itself a SaaS tool or platform (not a company's own site) are NOT it_company. " +
         "hires_engineers: it plausibly employs software, DevOps or infrastructure engineers. " +
         "vietnam_or_remote: it has an office in Vietnam or hires engineers remotely. name: the company's name. When unsure, answer false.",

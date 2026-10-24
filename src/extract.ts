@@ -64,8 +64,19 @@ export const OWNER_STACK = new Set([
   "PostgreSQL", "MySQL", "Redis",
 ]);
 
+// Pages that wrap every tag of a list in its own block ("DevOps", ",", "GCP", ",", ...) leave one-word lines and
+// lines holding only a comma or a bullet; those are folded back into sentences.
+export function tidyText(text: string): string {
+  return text
+    .replace(/\n[ \t]*([,;:.)\]])[ \t]*(?=\n)/g, "$1")
+    .replace(/([,;:])\n[ \t]*/g, "$1 ")
+    .replace(/\n[ \t]*[-•*][ \t]*(?=\n)/g, "")
+    .replace(/\n\s*\n+/g, "\n")
+    .trim();
+}
+
 export function htmlToText(html: string): string {
-  return html
+  return tidyText(html
     .replace(/<(br|\/p|\/li|\/h\d|\/div)\s*\/?>/gi, "\n")
     .replace(/<li[^>]*>/gi, "- ")
     .replace(/<[^>]+>/g, " ")
@@ -77,7 +88,7 @@ export function htmlToText(html: string): string {
     .replace(/&quot;/g, '"')
     .replace(/[ \t]+/g, " ")
     .replace(/\n\s*\n+/g, "\n")
-    .trim();
+    .trim());
 }
 
 // The sentence (or line) around a match, for excerpts.

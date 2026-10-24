@@ -3,7 +3,7 @@
 import { active, loadLearned, MIN_LABELS } from "../learn.js";
 import { pool } from "../db.js";
 import { needsSummary, type ViSummary } from "../translate.js";
-import { OWNER_STACK } from "../extract.js";
+import { OWNER_STACK, tidyText } from "../extract.js";
 import { loadPrefs } from "../settings.js";
 import { normalizeKey } from "../store.js";
 import type { Reason } from "../score-weights.js";
@@ -124,7 +124,8 @@ export async function loadDescription(id: number): Promise<DescriptionView | nul
     "SELECT description, stack, vi_summary, vi_full FROM jobs WHERE id = $1", [id],
   );
   if (!rows[0]) return null;
-  const description = rows[0].description ?? "";
+  // Text stored before tidyText existed is tidied on the way out.
+  const description = tidyText(rows[0].description ?? "");
   return {
     description, terms: matchedTerms(description, rows[0].stack),
     viSummary: rows[0].vi_summary, viFull: rows[0].vi_full, english: needsSummary(description),

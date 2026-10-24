@@ -37,6 +37,11 @@ describe("link discovery", () => {
     expect(s.score).toBeLessThanOrEqual(25);
   });
 
+  it("rejects a job board even when it talks about IT", () => {
+    const html = page(`<p>Việc làm IT, phần mềm, outsourcing, DevOps, cloud tại TP.HCM.${filler}</p><a href="/jobs">Jobs</a>`, "ITJobs.com.vn: Dịch vụ tuyển dụng dành cho dân IT");
+    expect(scoreCandidate(html, "itjobs.com.vn").score).toBeLessThanOrEqual(25);
+  });
+
   it("rejects an online shop and a parked domain", () => {
     expect(scoreCandidate(page(`<p>Giỏ hàng · Mua ngay · Thêm vào giỏ · Áo thun nam.${filler}</p>`), "shop.vn").score).toBeLessThan(25);
     expect(scoreCandidate(page("<p>This domain is for sale.</p>"), "parked.com").score).toBe(0);
