@@ -114,7 +114,17 @@ function firstMatch(text: string, pattern: RegExp): { match: RegExpExecArray; ex
 const MILLION = 1_000_000;
 
 // Parses "15 - 25 triệu", "Up to 30M", "$1,500 - 2,000", "1000-2000 USD", "Thu nhập 15-40 Triệu".
+// "400–550 triệu/năm", "$60,000 per year": yearly figures are turned into monthly ones, which the score expects.
+const PER_YEAR = /\/\s*(năm|year|yr|annum)\b|(mỗi|một|hằng|hàng) năm|per (year|annum)|annual(ly)?|yearly|\bp\.a\.(?!\w)/i;
+
 export function parseSalary(input: string): Salary | null {
+  const salary = parseSalaryAmount(input);
+  if (!salary || !PER_YEAR.test(input)) return salary;
+  const monthly = (v: number | null) => (v === null ? null : Math.round(v / 12));
+  return { ...salary, min: monthly(salary.min), max: monthly(salary.max) };
+}
+
+function parseSalaryAmount(input: string): Salary | null {
   const s = input.replace(/\s+/g, " ");
   const num = (v: string) => Number(v.replace(/[.,](?=\d{3}\b)/g, "").replace(",", "."));
 

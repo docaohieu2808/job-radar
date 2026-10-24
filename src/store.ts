@@ -238,9 +238,11 @@ export async function rescoreAll(): Promise<number> {
     const { score, reasons } = scorePosting(facts, prefs.weights, [...learnedReasons(model, factsFeatures(facts, r.company_name, r.source)), ...trust]);
     await pool.query(
       `UPDATE jobs SET work_mode=$2, level=$3, years=$4, stack=$5, english_required=$6, cert_support=$7,
-              raw_excerpts = raw_excerpts || $8::jsonb, score=$9, score_reasons=$10 WHERE id=$1`,
+              raw_excerpts = raw_excerpts || $8::jsonb, score=$9, score_reasons=$10,
+              salary_min=$11, salary_max=$12, currency=$13 WHERE id=$1`,
       [r.id, facts.workMode, facts.level, facts.years, JSON.stringify(facts.stack), facts.english, facts.certSupport,
-        JSON.stringify(facts.excerpts), score, JSON.stringify(reasons)],
+        JSON.stringify(facts.excerpts), score, JSON.stringify(reasons),
+        facts.salary?.min ?? null, facts.salary?.max ?? null, facts.salary?.currency ?? null],
     );
   }
   return rows.length - dropped;

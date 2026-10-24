@@ -154,3 +154,12 @@ describe("htmlToText", () => {
     expect(htmlToText(html)).toBe("Tiếng Việt\nDevOps & Kubernetes\n- Docker\n- Linux");
   });
 });
+
+describe("yearly salaries", () => {
+  it("turns a yearly range into a monthly one", async () => {
+    const { parseSalary } = await import("../src/extract.js");
+    expect(parseSalary("Thu nhập: từ 400 đến 550 triệu đồng/năm")).toEqual({ min: 33_333_333, max: 45_833_333, currency: "VND" });
+    expect(parseSalary("15 - 25 triệu")).toEqual({ min: 15_000_000, max: 25_000_000, currency: "VND" });
+    expect(parseSalary("Lương tháng 13, 15 - 25 triệu")?.max).toBe(25_000_000);
+  });
+});

@@ -89,7 +89,10 @@ export async function loadState(): Promise<StateView> {
              c.site_match, c.site_match_reasons,
              p.url AS career_url, p.kind AS career_kind
         FROM companies c
-        LEFT JOIN LATERAL (SELECT url, kind FROM career_pages WHERE company_id = c.id ORDER BY depth, id LIMIT 1) p ON true`);
+        LEFT JOIN LATERAL (SELECT url, kind FROM career_pages WHERE company_id = c.id ORDER BY depth, id LIMIT 1) p ON true
+       -- Only the companies the screens show: those with a posting here, and the watchlist (thousands more are crawled).
+       WHERE c.watch OR c.key = ANY($1::text[]) OR c.name = ANY($2::text[])`,
+    [[...new Set(postings.map((p) => p.companyKey))], [...new Set(postings.map((p) => p.company))]]);
   const info = new Map(registry.map((c) => [c.key ?? normalizeKey(c.name), c]));
   const view = (key: string, name: string): CompanyView => {
     const c = info.get(key);
