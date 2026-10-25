@@ -122,9 +122,14 @@ const MILLION = 1_000_000;
 const PER_YEAR = /(triệu|tr\b|million|\bm\b|usd|\$|\d)\s*(đồng|vnđ|vnd)?\s*(\/\s*(năm|year|yr|annum)\b|(mỗi|một) năm|per (year|annum)|a year\b|annually|yearly|\bp\.a\.(?!\w))|(lương|thu nhập|tổng thu nhập) (theo )?năm|annual (salary|compensation|base)|yearly salary/i;
 const PER_MONTH = /\/\s*(tháng|month|mo)\b|(mỗi|một|hàng) tháng|per month|monthly|a month\b/i;
 
+// No monthly pay in this market reaches $20,000; a figure that high is a yearly one written without "/year"
+// ("The pay range for this role is $164,200 - $295,600").
+const USD_YEARLY_FLOOR = 20_000;
+
 export function parseSalary(input: string): Salary | null {
   const salary = parseSalaryAmount(input);
-  if (!salary || !PER_YEAR.test(input) || PER_MONTH.test(input)) return salary;
+  const yearlyUsd = salary?.currency === "USD" && (salary.max ?? salary.min ?? 0) >= USD_YEARLY_FLOOR;
+  if (!salary || ((!PER_YEAR.test(input) || PER_MONTH.test(input)) && !yearlyUsd)) return salary;
   const monthly = (v: number | null) => (v === null ? null : Math.round(v / 12));
   return { ...salary, min: monthly(salary.min), max: monthly(salary.max) };
 }
@@ -141,10 +146,11 @@ function parseSalaryAmount(input: string): Salary | null {
   const vndFrom = /(?:từ|from|trên|over)\s*(\d{1,3}(?:[.,]\d)?)\s*(?:triệu|tr\b|m\b|million)/i.exec(s);
   if (vndFrom) return { min: num(vndFrom[1]) * MILLION, max: null, currency: "VND" };
 
-  // "$1,500 - 2,000", "800 - 1200 USD" (three-digit amounts count when a currency is named).
-  const usd = /\$?\s*(\d{1,2}[.,]?\d{3}|\d{3})\s*(?:-|–|~|to)\s*\$?\s*(\d{1,2}[.,]?\d{3}|\d{3})\s*(?:usd|\$)?/i.exec(s);
+  // "$1,500 - 2,000", "800 - 1200 USD", "$164,200 - $295,600" (three-digit amounts count when a currency is named).
+  // An amount starts at a number's first digit, so "$164,200" is never read from its tail as "64,200".
+  const usd = /(?<![\d.,])\$?\s*(\d{1,3}(?:[.,]\d{3})+|\d{3,6})\s*(?:-|–|~|to)\s*\$?\s*(\d{1,3}(?:[.,]\d{3})+|\d{3,6})\s*(?:usd|\$)?/i.exec(s);
   if (usd && (/usd|\$/i.test(usd[0]))) return { min: num(usd[1]), max: num(usd[2]), currency: "USD" };
-  const usdUpTo = /(?:up to|lên (?:đến|tới)|tới|max)\s*\$?\s*(\d{1,2}[.,]?\d{3})\s*(usd|\$)?/i.exec(s);
+  const usdUpTo = /(?:up to|lên (?:đến|tới)|tới|max)\s*\$?\s*(\d{1,3}(?:[.,]\d{3})+|\d{4,6})\s*(usd|\$)?/i.exec(s);
   if (usdUpTo && (usdUpTo[2] || /\$/.test(usdUpTo[0]))) return { min: null, max: num(usdUpTo[1]), currency: "USD" };
   return null;
 }

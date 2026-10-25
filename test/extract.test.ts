@@ -15,6 +15,13 @@ describe("parseSalary", () => {
     ["1000 - 2000 USD", { min: 1000, max: 2000, currency: "USD" }],
   ])("%s", (text, expected) => expect(parseSalary(text)).toEqual(expected));
 
+  it("reads six-digit US ranges from their first digit, as yearly pay", () => {
+    expect(parseSalary("The pay range for this role is $164,200 - $295,600.")).toEqual({ min: 13_683, max: 24_633, currency: "USD" });
+    expect(parseSalary("The target compensation for this position is $140,000 - $180,000 in most remote locations")).toEqual({ min: 11_667, max: 15_000, currency: "USD" });
+    expect(parseSalary("Up to $120,000")).toEqual({ min: null, max: 10_000, currency: "USD" });
+    expect(parseSalary("Lương: $1,500 - $3,000/tháng")).toEqual({ min: 1500, max: 3000, currency: "USD" });
+  });
+
   it("ignores text without pay", () => {
     expect(parseSalary("3-5 years of experience")).toBeNull();
     expect(parseSalary("Thương lượng")).toBeNull();
