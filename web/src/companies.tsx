@@ -130,7 +130,7 @@ export function CompanyScreen({ app, companyKey }: { app: App; companyKey: strin
             {open.map((p) => {
               const salary = salaryText(p);
               return (
-                <a key={p.id} href={`#/jobs/${p.id}`} className="hv-row" style={css("display:grid;grid-template-columns:40px minmax(0,1fr) 180px 72px;column-gap:16px;align-items:center;height:48px;border-bottom:1px solid var(--line);color:var(--ink);text-decoration:none")}>
+                <a key={p.id} href={`#/jobs/${p.id}`} className="hv-row co-post" style={css("display:grid;grid-template-columns:40px minmax(0,1fr) 180px 72px;column-gap:16px;align-items:center;height:48px;border-bottom:1px solid var(--line);color:var(--ink);text-decoration:none")}>
                   <span style={css(`font-size:16px;font-weight:600;color:${scoreColor(p.score, app.prefs!)}`)}>{p.score}</span>
                   <span style={css("font-size:14px;font-weight:500")}>{p.title}</span>
                   <span style={css(`font-size:13px;color:${salary ? "var(--ink)" : "var(--ink3)"}`)}>{salary ?? "Salary not shown"}</span>
@@ -159,7 +159,7 @@ export function CompanyScreen({ app, companyKey }: { app: App; companyKey: strin
             {all.map((p) => {
               const salary = salaryText(p);
               return (
-                <div key={p.id} style={css("display:grid;grid-template-columns:72px minmax(0,1fr) 120px auto;column-gap:16px;padding:10px 0;border-bottom:1px solid var(--line);font-size:13px")}>
+                <div key={p.id} className="co-hist" style={css("display:grid;grid-template-columns:72px minmax(0,1fr) 120px auto;column-gap:16px;padding:10px 0;border-bottom:1px solid var(--line);font-size:13px")}>
                   <span style={css("color:var(--ink3)")}>{dayMonth(postedIso(p))}</span>
                   <a href={`#/jobs/${p.id}`} style={css("color:var(--ink)")}>{p.title}</a>
                   <span style={css("color:var(--ink2)")}>{sourceText(p)}</span>

@@ -42,7 +42,9 @@ export function OverviewScreen({ app }: { app: App }) {
 
   const withSalary = open.map((p) => ({ p, s: salaryMillionVnd(p) })).filter((x) => x.s !== null) as { p: (typeof open)[number]; s: { lo: number; hi: number } }[];
   const salMax = Math.max(60, Math.ceil(Math.max(0, ...withSalary.map((x) => x.s.hi)) / 10) * 10);
-  const salTicks = Array.from({ length: salMax / 10 + 1 }, (_, i) => i * 10);
+  // About six labelled ticks whatever the range: a few yearly US salaries stretch the axis past 600M.
+  const salStep = [10, 20, 50, 100, 200, 500].find((v) => salMax / v <= 6) ?? 1000;
+  const salTicks = Array.from({ length: Math.floor(salMax / salStep) + 1 }, (_, i) => i * salStep);
 
   const skillCount = new Map<string, number>();
   for (const p of open.filter((p) => daysAgo(p.firstSeen, now) <= 31)) for (const s of [...p.have, ...p.gap]) skillCount.set(s, (skillCount.get(s) ?? 0) + 1);

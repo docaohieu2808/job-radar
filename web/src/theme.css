@@ -47,7 +47,16 @@ a:hover{text-decoration:underline;text-underline-offset:2px}
   .ov-head { flex-direction: column; align-items: flex-start !important; gap: 20px !important; padding: 20px 16px !important; }
   .src-grid { grid-template-columns: minmax(0,1fr) 96px 56px 16px !important; padding: 0 16px !important; }
   .src-grid > :nth-child(2), .src-grid > :nth-child(4), .src-grid > :nth-child(6) { display: none !important; }
+  button.src-grid { height: auto !important; min-height: 48px; padding-top: 8px !important; padding-bottom: 8px !important; }
   .usage-grid { grid-template-columns: minmax(0,1fr) !important; }
   .co-grid { grid-template-columns: minmax(0,1fr) 56px 40px !important; padding: 0 16px !important; }
   .co-grid > :nth-child(2), .co-grid > :nth-child(4), .co-grid > :nth-child(5) { display: none !important; }
+  /* A company's postings: the title gets the width, salary sits under it, the age stays on the right. */
+  .co-post { grid-template-columns: 32px minmax(0,1fr) auto !important; column-gap: 12px !important; row-gap: 2px; height: auto !important; padding: 10px 0; }
+  .co-post > :nth-child(1) { grid-row: 1 / span 2; }
+  .co-post > :nth-child(3) { grid-column: 2; grid-row: 2; font-size: 12px !important; }
+  .co-post > :nth-child(4) { grid-column: 3; grid-row: 1; }
+  .co-hist { grid-template-columns: 56px minmax(0,1fr) !important; column-gap: 12px !important; row-gap: 2px; }
+  .co-hist > :nth-child(3) { display: none; }
+  .co-hist > :nth-child(4) { grid-column: 2; font-size: 12px; }
 }
