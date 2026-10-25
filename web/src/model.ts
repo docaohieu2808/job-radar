@@ -57,6 +57,8 @@ export function salaryMillionVnd(p: PostingView): { lo: number; hi: number } | n
   if (p.salaryMin === null && p.salaryMax === null) return null;
   const lo = (p.salaryMin ?? p.salaryMax!) * k;
   const hi = (p.salaryMax ?? p.salaryMin!) * k;
+  // A minimum above the maximum is a misread range ("$164,200 - $295,600" read as 64,200–295); it has no place on the axis.
+  if (lo > hi) return null;
   return { lo, hi };
 }
 
