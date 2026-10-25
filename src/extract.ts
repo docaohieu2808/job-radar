@@ -342,6 +342,18 @@ export function isWantedLocation(location: string, workMode: WorkMode, other = "
   return !OTHER_CITY.test(location);
 }
 
+// Workday puts a role's primary place in the URL ("/job/Austin-TX/…") and shows "2 Locations" when there are more.
+// A primary place outside Vietnam, in a posting whose text never mentions Vietnam, is an office abroad.
+export function workdayAbroad(urls: string, text: string): boolean {
+  const places = [...urls.matchAll(/myworkdayjobs\.com\/(?:[a-z]{2}-[A-Z]{2}\/)?[^/\s]+\/job\/([^/\s]+)\//gi)].map((m) => m[1]);
+  if (!places.length) return false;
+  const local = places.some((place) => {
+    const words = decodeURIComponent(place).replace(/[-_]+/g, " ");
+    return HCMC.test(words) || /viet ?nam|việt nam|remote/i.test(words);
+  });
+  return !local && !/viet ?nam|việt nam|h[oồ] ch[ií] minh|\bhcm\b/i.test(text);
+}
+
 // A location naming remote work ("Remote (...)" from remote boards, "Remote - APAC" from ATS boards) settles the work
 // mode even when the description does not say.
 export function extractFacts(input: { title: string; text: string; tags?: string[]; salaryText?: string; location?: string }): Facts {

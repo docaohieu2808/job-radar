@@ -3,7 +3,7 @@
 // Content Seen? = hash of the normalized description; an unchanged posting is only touched, not re-extracted.
 import { createHash } from "node:crypto";
 import { pool, withTransaction } from "./db.js";
-import { bareRemote, extractFacts, isRelevantTitle, isWantedLocation, openWidely, remoteElsewhereOnly, type WorkMode } from "./extract.js";
+import { bareRemote, extractFacts, isRelevantTitle, isWantedLocation, openWidely, remoteElsewhereOnly, workdayAbroad, type WorkMode } from "./extract.js";
 import type { Prefs } from "./prefs.js";
 import { scorePosting } from "./score.js";
 import { factsFeatures, learnedReasons, loadLearned } from "./learn.js";
@@ -51,6 +51,7 @@ function rejection(title: string, location: string, workMode: WorkMode, prefs: P
   if (bareRemote(location)) {
     if (!openWidely(description)) return "place";
   } else if (!isWantedLocation(location, workMode, `${title} ${url}`)) return "place";
+  if (workdayAbroad(url, description)) return "place";
   // Remote roles whose text limits them to residents or citizens elsewhere ("must be located in the US").
   if (workMode === "remote" && remoteElsewhereOnly(description)) return "place";
   void source;

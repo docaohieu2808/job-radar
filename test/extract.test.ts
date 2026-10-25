@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { detectCertSupport, detectForeignLanguage, detectEnglish, detectLevel, detectStack, detectWorkMode, isRelevantTitle, isWantedLocation, parseSalary } from "../src/extract.js";
 import { scorePosting } from "../src/score.js";
-import { extractFacts } from "../src/extract.js";
+import { extractFacts, workdayAbroad } from "../src/extract.js";
 import { DEFAULT_PREFS } from "../src/prefs.js";
 const KW = DEFAULT_PREFS.keywords;
 
@@ -191,5 +191,19 @@ describe("audit 24/10", () => {
     expect(isWantedLocation("Colombo, Sri Lanka", "unknown")).toBe(false);
     expect(isWantedLocation("Hồ Tràm, Bà Rịa Vũng Tàu", "unknown")).toBe(false);
     expect(isWantedLocation("Ho Chi Minh City Metropolitan Area", "unknown")).toBe(true);
+  });
+});
+
+describe("workdayAbroad", () => {
+  const us = "https://jabil.wd5.myworkdayjobs.com/Jabil_Careers/job/Austin-TX/Lead-Electrical-CAD-Engineer_J2447311";
+  it("reads the primary place from a Workday URL", () => {
+    expect(workdayAbroad(us, "Design data center power systems.")).toBe(true);
+    expect(workdayAbroad("https://acme.wd3.myworkdayjobs.com/en-US/External/job/Ho-Chi-Minh-City/DevOps-Engineer_R1", "")).toBe(false);
+    expect(workdayAbroad("https://acme.wd3.myworkdayjobs.com/External/job/Vietnam---Ho-Chi-Minh/SRE_R2", "")).toBe(false);
+    expect(workdayAbroad("https://acme.wd3.myworkdayjobs.com/External/job/Remote-APAC/SRE_R3", "")).toBe(false);
+  });
+  it("keeps a role abroad whose text names a Vietnam office, and other boards", () => {
+    expect(workdayAbroad(us, "This role can also be based in Ho Chi Minh City.")).toBe(false);
+    expect(workdayAbroad("https://boards.greenhouse.io/acme/jobs/1", "")).toBe(false);
   });
 });
