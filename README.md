@@ -5,7 +5,16 @@ and follows company sites by itself, reads their career pages, judges how far ea
 trusted, scores every posting against the owner's criteria, learns from the owner's triage, and shows the result in a
 web inbox.
 
-Self-hosted on one ARM node (Oracle Cloud, 4 OCPU / 24 GB) with Docker Compose. Private, tailnet-only.
+Self-hosted on one ARM node (Oracle Cloud, 4 OCPU / 24 GB) with Docker Compose. The running instance is private
+(reachable only inside my Tailscale network); the code is public to show how it is built and run.
+
+| Overview | All postings |
+|---|---|
+| ![Overview: matching postings, new postings per day, postings by source, salary distribution](docs/screenshots/overview.webp) | ![All postings with match score, reasons, salary, place and source](docs/screenshots/postings.webp) |
+| **Posting detail** | **Sources** |
+| ![A posting with key facts, stack fit and the reason behind every point of its score](docs/screenshots/posting-detail.webp) | ![Health of every source: pages checked, LinkedIn budget, career-page coverage](docs/screenshots/sources.webp) |
+
+<img src="docs/screenshots/phone-postings.webp" alt="All postings on a phone" width="300">
 
 ## What it does
 
@@ -86,3 +95,9 @@ Operator commands: `docker compose exec crawler node dist/src/cli.js rescore | s
 - **Logs:** container stdout, collected by Promtail into Loki.
 - **Backup:** `pg_dump` in the node's nightly Kopia backup, plus a dump before every data change or migration.
 - **Design source:** `design/source/` (Claude Design export). Decisions and their reasons: `docs/design-decisions.md`.
+- **Tests:** `docker compose --profile test run --rm --build test` runs 128 unit and integration tests (Vitest)
+  against a throwaway Postgres.
+
+## License
+
+MIT, see [LICENSE](LICENSE).
