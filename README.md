@@ -90,7 +90,7 @@ Operator commands: `docker compose exec crawler node dist/src/cli.js rescore | s
   - Response bodies over 5 MB are refused while streaming, before they are buffered (robots.txt included).
   - A task cut off mid-run three times in a row, by a worker crash or a hang, is quarantined for a day instead of
     being picked up on every restart. Both came out of a real incident on 24 Oct 2026: a 22.8 MB company homepage
-    ran the crawler out of heap and crash-looped it for 5.5 hours.
+    ran the crawler out of heap and crash-looped it for almost 6 hours.
   - A crash loop now pages within minutes (`ContainerCrashLooping` in the fleet alert rules).
 - **Logs:** container stdout, collected by Promtail into Loki.
 - **Backup:** `pg_dump` in the node's nightly Kopia backup, plus a dump before every data change or migration.
