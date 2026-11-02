@@ -7,6 +7,8 @@ export type WorkMode = "onsite" | "hybrid" | "remote" | "unknown";
 export type Level = "intern" | "junior" | "middle" | "senior" | "lead" | "manager" | "unknown";
 export type English = "none" | "basic" | "good" | "fluent" | "unknown";
 
+export type PitExempt = "zone" | "project";
+
 export type Salary = { min: number | null; max: number | null; currency: "VND" | "USD" };
 
 export type Facts = {
@@ -21,6 +23,9 @@ export type Facts = {
   // A language other than English or Vietnamese the role requires, e.g. "Japanese N2"; null when none is required.
   foreignLanguage: string | null;
   vietnameseText: boolean;
+  // Why the pay might be free of personal income tax for 5 years (Law 71/2025/QH15 art. 49, Decree 253/2026 art. 41);
+  // a hint to ask the employer about, never a certainty. null when nothing points that way.
+  pitExempt: PitExempt | null;
   excerpts: Record<string, string>;
 };
 
@@ -270,6 +275,25 @@ export function detectAbroad(text: string): { abroad: boolean; excerpt?: string 
   return hit ? { abroad: true, excerpt: hit.excerpt } : { abroad: false };
 }
 
+// Pay for work in a concentrated digital technology zone, or on an AI, chip or key digital product project, is free of
+// personal income tax for 5 years for high-quality digital workforce (Law 71/2025/QH15 art. 49; Decree 253/2026 art. 41).
+// Zones: the recognised concentrated IT zone in HCMC is Quang Trung Software City (QTSC). Saigon Hi-Tech Park is a
+// high-tech zone, a different regime, and is not counted.
+const DIGITAL_ZONE = /quang trung software|c[ôo]ng vi[êe]n ph[ầa]n m[ềe]m quang trung|cvpm quang trung|\bqtsc\b/i;
+// The role builds or runs an AI system or chips, not just uses AI tools ("use Copilot", "AI-assisted coding").
+const AI_OR_CHIP = /\bmlops\b|\bllmops\b|\b(llm|genai|generative ai|machine learning|deep learning|computer vision|ai|ml)\b[^.\n]{0,30}\b(platform|product|model (training|serving|inference)|training|inference|infrastructure|infra|pipeline|r&d|research|company|startup)\b|\bgpu (cluster|infrastructure|farm)s?\b|trí tuệ nhân tạo|sản phẩm ai|nền tảng ai|\bsemiconductor|bán dẫn|vi mạch|chip design|\bic design\b|\bfpga\b/i;
+const AI_TOOL_ONLY = /\b(use|using|leverage|familiar with|experience with|sử dụng)\b[^.\n]{0,25}\b(ai|llm|genai)[- ]?(tools?|assistants?|coding|powered)|copilot|chatgpt|\bcursor\b/i;
+
+export function detectPitExempt(text: string, location = ""): { basis: PitExempt | null; excerpt?: string } {
+  const zone = firstMatch(`${location}\n${text}`, DIGITAL_ZONE);
+  if (zone) return { basis: "zone", excerpt: zone.excerpt };
+  for (const line of text.split(/\n|(?<=[.;!?])\s+/)) {
+    if (!AI_OR_CHIP.test(line) || AI_TOOL_ONLY.test(line)) continue;
+    return { basis: "project", excerpt: line.trim().slice(0, 240) };
+  }
+  return { basis: null };
+}
+
 const VIETNAMESE_MARKS = /[ăâđêôơưạảấầẩẫậắằẳẵặẹẻẽếềểễệỉịọỏốồổỗộớờởỡợụủứừửữựỳỵỷỹ]/gi;
 
 export function isVietnameseText(text: string): boolean {
@@ -375,6 +399,11 @@ export function extractFacts(input: { title: string; text: string; tags?: string
   if (abroad.excerpt) excerpts.abroad = abroad.excerpt;
   const foreign = detectForeignLanguage(`${input.title}\n${input.text}`);
   if (foreign.excerpt) excerpts.foreignLanguage = foreign.excerpt;
+  const vietnameseText = isVietnameseText(input.text);
+  // The exemption needs a contract with a Vietnamese employer; an English-only remote posting is almost always a
+  // company abroad.
+  const pit = mode.mode === "remote" && !vietnameseText ? { basis: null } : detectPitExempt(`${input.title}\n${input.text}`, input.location);
+  if (pit.excerpt) excerpts.pitExempt = pit.excerpt;
   return {
     salary,
     workMode: mode.mode,
@@ -385,7 +414,8 @@ export function extractFacts(input: { title: string; text: string; tags?: string
     certSupport: cert.cert,
     abroad: abroad.abroad,
     foreignLanguage: foreign.language,
-    vietnameseText: isVietnameseText(input.text),
+    vietnameseText,
+    pitExempt: pit.basis,
     excerpts,
   };
 }

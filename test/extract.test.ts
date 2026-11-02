@@ -207,3 +207,35 @@ describe("workdayAbroad", () => {
     expect(workdayAbroad("https://boards.greenhouse.io/acme/jobs/1", "")).toBe(false);
   });
 });
+
+describe("detectPitExempt", () => {
+  it.each([
+    ["Địa điểm: Tòa nhà Helios, Công viên phần mềm Quang Trung, Quận 12", "zone"],
+    ["Office at QTSC, District 12", "zone"],
+    ["Build and operate the GPU cluster that serves our LLM inference platform.", "project"],
+    ["Vận hành hạ tầng cho sản phẩm AI của công ty", "project"],
+    ["Experience with MLOps (Kubeflow, MLflow) is a plus", "project"],
+    ["We design chips: semiconductor verification flows run on our Kubernetes farm", "project"],
+  ])("flags %s", (text, basis) => {
+    expect(extractFacts({ title: "DevOps Engineer", text, location: "Hồ Chí Minh" }).pitExempt).toBe(basis);
+  });
+
+  it.each([
+    "Use AI tools such as GitHub Copilot to speed up scripting",
+    "Experience with AI-assisted coding is welcome",
+    "Maintain CI/CD pipelines on GitLab and Kubernetes",
+    "Office in Saigon Hi-Tech Park, Thu Duc",
+  ])("does not flag %s", (text) => {
+    expect(extractFacts({ title: "DevOps Engineer", text, location: "Hồ Chí Minh" }).pitExempt).toBeNull();
+  });
+
+  it("skips English remote postings, which are companies abroad", () => {
+    const facts = extractFacts({ title: "SRE", text: "Run our LLM inference platform on GPUs.", location: "Remote (Worldwide)" });
+    expect(facts.pitExempt).toBeNull();
+  });
+
+  it("adds a small reason to the score", () => {
+    const facts = extractFacts({ title: "DevOps Engineer", text: "Làm việc tại Công viên phần mềm Quang Trung. Docker, Kubernetes.", location: "HCM" });
+    expect(scorePosting(facts).reasons.some((r) => r.label === "PIT-exempt zone (QTSC)" && r.points === 3)).toBe(true);
+  });
+});

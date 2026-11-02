@@ -23,8 +23,8 @@ export function parseRoute(hash: string): Route {
   return { name: (names as readonly string[]).includes(n) ? (n as (typeof names)[number]) : "inbox" };
 }
 
-export type Filters = Record<"match" | "salary" | "stack" | "mode" | "district" | "source" | "status" | "open", string>;
-export const F0: Filters = { match: "Any", salary: "Any", stack: "Any", mode: "Any", district: "Any", source: "Any", status: "Any", open: "Any" };
+export type Filters = Record<"match" | "salary" | "stack" | "mode" | "district" | "source" | "status" | "open" | "tax", string>;
+export const F0: Filters = { match: "Any", salary: "Any", stack: "Any", mode: "Any", district: "Any", source: "Any", status: "Any", open: "Any", tax: "Any" };
 
 type Toast = { text: string; undo?: () => void };
 

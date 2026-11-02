@@ -58,6 +58,9 @@ export function scorePosting(facts: Facts, weights: Weights = DEFAULT_WEIGHTS, e
   cat = "other";
   if (facts.workMode === "remote") add(5, "Remote");
   else if (facts.workMode === "hybrid") add(3, "Hybrid");
+  // A hint, not a certainty: the exemption also needs the owner to meet the high-quality workforce income bar.
+  if (facts.pitExempt === "zone") add(3, "PIT-exempt zone (QTSC)");
+  else if (facts.pitExempt === "project") add(3, "PIT-exempt? AI/chip project");
 
   reasons.sort((a, b) => Math.abs(b.points) - Math.abs(a.points));
   return { score: scoreFromReasons(reasons, weights), reasons };

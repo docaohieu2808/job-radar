@@ -24,6 +24,7 @@ export function filterDefs(app: App): { k: keyof Filters; l: string; o: string[]
     { k: "source", l: "Source", o: ["Any", ...count(ps.flatMap((p) => p.sources.map((s) => s.name)))] },
     { k: "status", l: "Status", o: ["Any", "New", "Interested", "Applied", "Interviewing", "Offer", "Skipped"] },
     { k: "open", l: "Open or closed", o: ["Any", "Open", "Closed"] },
+    { k: "tax", l: "Tax", o: ["Any", "PIT-exempt hint"] },
   ];
 }
 
@@ -45,6 +46,7 @@ export function passes(p: PostingView, f: Filters, q: string): boolean {
   if (f.source !== "Any" && !p.sources.some((s) => s.name === f.source)) return false;
   if (f.status !== "Any" && statusLabel(p) !== f.status) return false;
   if ((f.open === "Open" && p.closedAt) || (f.open === "Closed" && !p.closedAt)) return false;
+  if (f.tax === "PIT-exempt hint" && !p.excerpts.pitExempt) return false;
   return true;
 }
 
