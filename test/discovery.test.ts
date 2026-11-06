@@ -1,7 +1,8 @@
 import { describe, expect, it } from "vitest";
 
 process.env.DATABASE_URL ??= "postgres://unused";
-const { candidateDomain, scoreCandidate, siteName } = await import("../src/sources/discovery.js");
+const { candidateDomain, isFinalRefusal, scoreCandidate, siteName } = await import("../src/sources/discovery.js");
+const { HostRefusedError } = await import("../src/handlers/index.js");
 
 const page = (body: string, title = "Acme Software") =>
   `<html><head><title>${title}</title></head><body><main>${body}</main></body></html>`;
@@ -52,5 +53,10 @@ describe("link discovery", () => {
     expect(siteName('<meta property="og:site_name" content="Tinhvan Software">', "tso.vn")).toBe("Tinhvan Software");
     expect(siteName("<title>Acme | Software outsourcing</title>", "acme.vn")).toBe("Acme");
     expect(siteName("<title>Home</title>", "acme.vn")).toBe("Acme");
+  });
+
+  it("ends a candidate on a 403 bot block but retries a 429", () => {
+    expect(isFinalRefusal(new HostRefusedError(403, null))).toBe(true);
+    expect(isFinalRefusal(new HostRefusedError(429, 60))).toBe(false);
   });
 });

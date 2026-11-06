@@ -146,6 +146,11 @@ export function siteName(html: string, domain: string): string {
   return domain.split(".")[0].replace(/^\w/, (c) => c.toUpperCase());
 }
 
+// Refusals that end a candidate's check instead of pausing and retrying it.
+export function isFinalRefusal(err: HostRefusedError): boolean {
+  return err.status === 403;
+}
+
 type LlmVerdict = { it_company: boolean; hires_engineers: boolean; vietnam_or_remote: boolean; name: string };
 
 async function checkCandidate(domain: string): Promise<"done" | "later"> {
@@ -168,7 +173,15 @@ async function checkCandidate(domain: string): Promise<"done" | "later"> {
   try {
     html = await readSite(url);
   } catch (err) {
-    if (err instanceof HostRefusedError) throw err;
+    if (err instanceof HostRefusedError) {
+      // A 403 on the home page is a standing bot block: its career pages would be refused too, and the worker would
+      // otherwise park and retry this candidate forever. A 429 is only "slow down", so that one is retried.
+      if (isFinalRefusal(err)) {
+        await decide("rejected", null, "rules", `home page refuses the crawler (${err.status})`);
+        return "done";
+      }
+      throw err;
+    }
     await decide("error", null, null, err instanceof Error ? err.message.slice(0, 200) : String(err));
     return "done";
   }
