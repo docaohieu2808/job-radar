@@ -91,6 +91,9 @@ async function api(req: IncomingMessage, res: ServerResponse, url: URL): Promise
 async function feed(req: IncomingMessage, res: ServerResponse, url: URL): Promise<void> {
   const parts = url.pathname.split("/").filter(Boolean); // ["feed", token, ...]
   const text = (status: number, body: string) => {
+    // One line per read, without the token, so a morning run can be confirmed with `docker compose logs web | grep feed`.
+    const shown = parts[1] ? url.pathname.replace(parts[1], feedTokenOk(parts[1]) ? "<token>" : "<bad>") : url.pathname;
+    console.log(`feed ${status} ${shown}${url.search} ${req.headers["x-forwarded-for"] ?? "-"} ${req.headers["user-agent"] ?? "-"}`);
     res.writeHead(status, { "content-type": "text/plain; charset=utf-8", "cache-control": "no-store", "x-robots-tag": "noindex, nofollow" });
     res.end(body);
   };
