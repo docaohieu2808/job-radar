@@ -9,6 +9,7 @@ import { addCandidate } from "./sources/discovery.js";
 import { queueInboxSummaries } from "./translate.js";
 import { addCareerPage } from "./sources/career.js";
 import { detectAts } from "./sources/ats.js";
+import { loadMatches } from "./api/feed.js";
 
 const [command, ...args] = process.argv.slice(2);
 try {
@@ -104,19 +105,8 @@ try {
     // The Inbox as plain text, for answering "any good jobs today?" from a terminal or a chat session:
     // open, untriaged postings at or above the Inbox threshold, first seen in the last N days (default 7).
     const days = Number(args[0] ?? 7);
-    const prefs = await loadPrefs();
-    const { rows } = await pool.query<{
-      id: string; score: number; title: string; company_name: string; location: string | null; work_mode: string | null;
-      salary_min: string | null; salary_max: string | null; currency: string | null; first_seen_at: Date; reasons: { label: string; points: number }[]; url: string | null;
-    }>(
-      `SELECT j.id, j.score, j.title, j.company_name, j.location, j.work_mode, j.salary_min, j.salary_max, j.currency, j.first_seen_at,
-              j.score_reasons AS reasons, (SELECT s.url FROM job_sources s WHERE s.job_id = j.id ORDER BY s.id LIMIT 1) AS url
-         FROM jobs j JOIN applications a ON a.job_id = j.id
-        WHERE j.closed_at IS NULL AND a.status = 'new' AND j.score >= $1 AND j.first_seen_at > now() - make_interval(days => $2)
-        ORDER BY j.score DESC, j.first_seen_at DESC`,
-      [prefs.inboxMin, days],
-    );
-    console.log(`${rows.length} postings scored ${prefs.inboxMin}+ first seen in the last ${days} days, not yet triaged`);
+    const { inboxMin, rows } = await loadMatches(days);
+    console.log(`${rows.length} postings scored ${inboxMin}+ first seen in the last ${days} days, not yet triaged`);
     for (const r of rows) {
       const pay = r.salary_max ?? r.salary_min;
       const salary = pay === null ? "salary hidden" : `up to ${Number(pay).toLocaleString("en-US")} ${r.currency ?? ""}`.trim();

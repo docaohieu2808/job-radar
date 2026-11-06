@@ -9,6 +9,7 @@ import { BadRequest, NotFound, setStatus, setWatch, setWebsite, updatePrefs } fr
 import { relearn } from "./learn.js";
 import { summarize, translateFull } from "./translate.js";
 import { rescoreAll } from "./store.js";
+import { digestText, feedTokenOk, jobText } from "./api/feed.js";
 
 // A burst of triage clicks refits the model once, a few seconds after the last one, then rescores the postings.
 let relearnTimer: NodeJS.Timeout | null = null;
@@ -86,6 +87,26 @@ async function api(req: IncomingMessage, res: ServerResponse, url: URL): Promise
   send(res, 404, { error: "not found" });
 }
 
+// The read-only digest for an outside assistant: /feed/<token> (?days=N, default 1) and /feed/<token>/jobs/<id>.
+async function feed(req: IncomingMessage, res: ServerResponse, url: URL): Promise<void> {
+  const parts = url.pathname.split("/").filter(Boolean); // ["feed", token, ...]
+  const text = (status: number, body: string) => {
+    res.writeHead(status, { "content-type": "text/plain; charset=utf-8", "cache-control": "no-store", "x-robots-tag": "noindex, nofollow" });
+    res.end(body);
+  };
+  if (req.method !== "GET" || !feedTokenOk(parts[1])) return text(404, "not found\n");
+  const base = `https://${req.headers.host ?? "localhost"}/feed/${parts[1]}`;
+  if (parts.length === 2) {
+    const days = Math.min(Math.max(Number(url.searchParams.get("days") ?? 1) || 1, 1), 14);
+    return text(200, await digestText(days, base));
+  }
+  if (parts[2] === "jobs" && parts.length === 4) {
+    const body = await jobText(Number(parts[3]));
+    return body ? text(200, body) : text(404, "not found\n");
+  }
+  text(404, "not found\n");
+}
+
 async function serveStatic(res: ServerResponse, pathname: string): Promise<void> {
   const safe = path.normalize(decodeURIComponent(pathname)).replace(/^(\.\.[/\\])+/, "");
   let file = path.join(STATIC_DIR, safe);
@@ -113,6 +134,7 @@ const server = createServer(async (req, res) => {
       const ok = Boolean(last && Date.now() - last.getTime() < 6 * 3600_000);
       return send(res, ok ? 200 : 503, { ok, lastRun: last });
     }
+    if (url.pathname.startsWith("/feed/")) return await feed(req, res, url);
     if (url.pathname.startsWith("/api/")) return await api(req, res, url);
     await serveStatic(res, url.pathname);
   } catch (err) {

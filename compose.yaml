@@ -60,7 +60,18 @@ services:
       traefik.http.routers.job-radar.tls: "true"
       traefik.http.routers.job-radar.middlewares: job-radar-tailnet@docker,app-chain@file
       traefik.http.middlewares.job-radar-tailnet.ipallowlist.sourcerange: 100.64.0.0/10
+      traefik.http.routers.job-radar.service: job-radar
       traefik.http.services.job-radar.loadbalancer.server.port: "8080"
+      # Public read-only digest for a ChatGPT scheduled task (it cannot join the tailnet). Only /feed/ is routed on
+      # this host, and the app answers 404 unless the path carries FEED_TOKEN; the screens and /api stay tailnet-only.
+      traefik.http.routers.job-radar-feed.rule: Host(`jobs-feed.docaohieu.com`) && PathPrefix(`/feed/`)
+      traefik.http.routers.job-radar-feed.entrypoints: websecure
+      traefik.http.routers.job-radar-feed.tls: "true"
+      traefik.http.routers.job-radar-feed.service: job-radar
+      traefik.http.routers.job-radar-feed.middlewares: job-radar-feed-rate@docker,app-chain@file
+      traefik.http.middlewares.job-radar-feed-rate.ratelimit.average: "30"
+      traefik.http.middlewares.job-radar-feed-rate.ratelimit.period: "1m"
+      traefik.http.middlewares.job-radar-feed-rate.ratelimit.burst: "10"
     deploy:
       resources:
         limits: { cpus: "0.3", memory: 256M }
